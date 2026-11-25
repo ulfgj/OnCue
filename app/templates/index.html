@@ -11,11 +11,11 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Header with Live Clock & Add Button -->
+    <!-- Header with Live Clock & Ephemeral Actions -->
     <header class="app-header">
       <div class="header-left">
         <h1 class="app-title"><span class="brand-cue">On</span><span class="brand-highlight">Cue</span></h1>
-        <p class="app-subtitle">Stay in flow. Step in on cue.</p>
+        <p class="app-subtitle">Today's ephemeral cue sheet • Tomorrow is a fresh slate</p>
       </div>
 
       <div class="clock-display" id="clockDisplay">
@@ -24,6 +24,9 @@
       </div>
 
       <div class="header-actions">
+        <button id="clearSlateBtn" class="btn btn-secondary btn-outline" style="display: none;" title="Clear all cues for today and start with a blank slate">
+          🧹 Clear Slate
+        </button>
         <button id="openAddModalBtn" class="btn btn-primary">
           <span class="btn-icon">＋</span> New Cue
         </button>
@@ -34,7 +37,7 @@
     <main class="app-main">
       <div class="list-controls">
         <div class="status-summary">
-          <span id="activeCountBadge" class="badge badge-info">0 active</span>
+          <span id="activeCountBadge" class="badge badge-info">0 active today</span>
           <span class="sort-indicator">Arranged by: <strong>Next on Cue</strong></span>
         </div>
       </div>
@@ -47,9 +50,9 @@
       <!-- Empty State -->
       <div id="emptyState" class="empty-state" style="display: none;">
         <div class="empty-icon">🎭</div>
-        <h3>No cues scheduled</h3>
-        <p>Set your first cue to stay in your flow, fully confident you'll step in right on time.</p>
-        <button class="btn btn-primary" onclick="openAlarmModal()">Create First Cue</button>
+        <h3>Today's slate is clear</h3>
+        <p>Set today's cues when you're ready. Ephemeral by design—no lingering alarms or tomorrow clutter.</p>
+        <button class="btn btn-primary" onclick="openAlarmModal()">Schedule Today's First Cue</button>
       </div>
     </main>
   </div>
@@ -58,7 +61,7 @@
   <div id="alarmModal" class="modal-backdrop" style="display: none;">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="modalTitle">Schedule Cue</h2>
+        <h2 id="modalTitle">Schedule Today's Cue</h2>
         <button class="modal-close" onclick="closeAlarmModal()">&times;</button>
       </div>
 
@@ -66,9 +69,9 @@
         <input type="hidden" id="alarmId" value="">
 
         <div class="form-group">
-          <label for="alarmTime">Cue Time (24h format) *</label>
+          <label for="alarmTime">Cue Time (Today, 24h format) *</label>
           <input type="time" id="alarmTime" required class="form-input time-input">
-          <small class="form-help">Automatically targets today or rolls over to tomorrow if the time has already passed.</small>
+          <small class="form-help">Strictly for today. Completed cues retire peacefully at the end of the day.</small>
         </div>
 
         <div class="form-group">

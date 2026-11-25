@@ -107,6 +107,25 @@ def test_delete_alarm(client):
     get_res = client.get(f"/api/alarms/{alarm_id}")
     assert get_res.status_code == 404
 
+def test_clear_slate(client):
+    # Add multiple cues
+    client.post("/api/alarms", json={"time": "09:00", "title": "Cue 1"})
+    client.post("/api/alarms", json={"time": "14:00", "title": "Cue 2"})
+    client.post("/api/alarms", json={"time": "17:00", "title": "Cue 3"})
+
+    list_res = client.get("/api/alarms")
+    assert len(list_res.get_json()["alarms"]) == 3
+
+    # Clear all cues for the day
+    clear_res = client.delete("/api/alarms")
+    assert clear_res.status_code == 200
+    assert clear_res.get_json()["cleared_count"] == 3
+
+    # Verify slate is empty
+    empty_res = client.get("/api/alarms")
+    assert len(empty_res.get_json()["alarms"]) == 0
+
+
 def test_not_found_operations(client):
     assert client.get("/api/alarms/9999").status_code == 404
     assert client.put("/api/alarms/9999", json={"time": "12:00"}).status_code == 404

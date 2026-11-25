@@ -3,22 +3,24 @@
 > *"Stay in flow. Step in on cue."*
 
 ## 1. Overview
-OnCue is a calm, precision web application built with Flask that gives you peace of mind to focus deeply, knowing you will be smoothly cued right on time. Features real-time countdowns, automatic dynamic sorting by nearest upcoming cue, multiline context briefs, and a soothing theater chime.
+OnCue is a calm, precision web application built with Flask designed around **ephemeral, today-only cues**. Like a theater or film daily call sheet, cues are authored strictly for today's specific rhythm and context. Tomorrow begins with a clean, blank slate—eliminating alarm clutter, cognitive load, and lingering chore debt.
 
-## 2. Requirements & Features
-- **Cues List**: Multiple cues per user/session stored in local SQLite database.
-- **Time Setting**: Exact time of day (`HH:MM` in 24-hour format).
-- **Next Occurrence Logic**: Automatically computes next trigger:
-  - If target time is later today, triggers today.
-  - If target time has already passed today, rolls over to tomorrow.
-- **Dynamic Real-Time Sorting ("Next on Cue")**: Cues are always displayed with the closest trigger first, updating live every second as time passes or when a cue is updated.
-- **Live Countdown ("Time to Cue")**: Each cue card shows a ticking countdown (`HHh MMm SSs`).
-- **Context Briefs / Notes**: Each cue contains an editable multiline text field preserving line breaks, checklists, and arbitrary formatting.
-- **Editing & Controls**:
-  - Edit time, label, and context brief at any time.
-  - Active toggle for each cue.
-  - Delete cue.
-  - Active cue notification with a synthesized two-tone theater chime (Web Audio API) and visual modal/banner with "Step In" (Acknowledge) and "Stand by (+5m)" options.
+## 2. Requirements & Ephemeral Architecture
+- **Ephemeral Daily Slate**:
+  - Cues belong strictly to today's schedule.
+  - Active upcoming cues count down live (`HHh MMm SSs`).
+  - Cues that have passed today gracefully transition into a dimmed "Completed Today" state rather than rolling over to tomorrow.
+  - At midnight (00:00:00), the app automatically starts fresh for the new day.
+  - Users can wipe today's slate clean anytime using the "Clear Slate" action.
+- **Dynamic Real-Time Priority ("Next on Cue")**:
+  - Upcoming active cues are automatically kept in closest-first order.
+  - Inactive/paused cues appear next.
+  - Completed/passed cues are positioned unobtrusively at the bottom.
+- **Context Briefs**:
+  - Editable multiline text field preserving line breaks, checklists, and arbitrary formatting.
+- **Audio & Alert Notification**:
+  - Gentle, resonant synthesized two-tone theater chime (Web Audio API).
+  - Alert modal with "Step In" (Acknowledge) and "Stand by (+5m)" options.
 
 ## 3. Architecture & Tech Stack
 - **Backend**: Python 3.13, Flask, SQLite (`sqlite3`).
@@ -31,4 +33,5 @@ OnCue is a calm, precision web application built with Flask that gives you peace
 - `POST /api/alarms` — Create new cue `{ time: "HH:MM", title: "...", notes: "..." }`.
 - `PUT /api/alarms/<id>` — Update cue `{ time, title, notes, is_enabled }`.
 - `PATCH /api/alarms/<id>/toggle` — Toggle cue active status.
-- `DELETE /api/alarms/<id>` — Remove cue.
+- `DELETE /api/alarms/<id>` — Remove single cue.
+- `DELETE /api/alarms` — Clear today's entire slate.

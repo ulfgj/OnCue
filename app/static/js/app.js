@@ -1,8 +1,9 @@
-// OnCue — Stay in flow. Step in on cue.
+// OnCue — Stay in flow. Step in on cue. (Ephemeral Daily Slate)
 let alarms = [];
 let audioCtx = null;
 let chimeInterval = null;
 let activeTriggerAlarm = null;
+let lastKnownDay = new Date().getDate();
 const triggeredAlarmIdsThisMinute = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -13,9 +14,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("openAddModalBtn").addEventListener("click", () => {
     openAlarmModal();
   });
+
+  const clearSlateBtn = document.getElementById("clearSlateBtn");
+  if (clearSlateBtn) {
+    clearSlateBtn.addEventListener("click", handleClearSlate);
+  }
 });
 
-// Digital Clock in Header
+// Digital Clock in Header & Midnight Date Flip Detection
 function initClock() {
   updateClock();
   setInterval(updateClock, 1000);
@@ -30,6 +36,14 @@ function updateClock() {
   const digitalDateEl = document.getElementById("digitalDate");
   if (digitalTimeEl) digitalTimeEl.textContent = timeStr;
   if (digitalDateEl) digitalDateEl.textContent = dateStr;
+
+  // Detect midnight boundary (new calendar day)
+  if (now.getDate() !== lastKnownDay) {
+    lastKnownDay = now.getDate();
+    triggeredAlarmIdsThisMinute.clear();
+    // Fresh slate for the new day
+    renderAlarms();
+  }
 }
 
 // Fetch Cues from Backend
@@ -45,25 +59,24 @@ async function fetchAlarms() {
   }
 }
 
-// Calculate Next Occurrence Date & Diff in Milliseconds
-function getNextOccurrence(timeStr) {
+// Calculate Today-Bound Time Diff (Strictly for Today)
+function getTodayCueStatus(timeStr) {
   const [hours, minutes] = timeStr.split(":").map(Number);
   const now = new Date();
   const target = new Date();
   target.setHours(hours, minutes, 0, 0);
 
-  if (target <= now) {
-    // Already passed today, rolls over to tomorrow
-    target.setDate(target.getDate() + 1);
-  }
-
   const diffMs = target - now;
-  return { target, diffMs };
+
+  if (diffMs <= 0) {
+    return { isPassed: true, diffMs, target };
+  }
+  return { isPassed: false, diffMs, target };
 }
 
 // Format Milliseconds into "00h 00m 00s"
 function formatCountdown(diffMs) {
-  if (diffMs <= 0) return "00h 00m 00s";
+  if (diffMs <= 0) return "Passed";
 
   const totalSecs = Math.floor(diffMs / 1000);
   const hrs = Math.floor(totalSecs / 3600);
@@ -83,7 +96,7 @@ function tick() {
     triggeredAlarmIdsThisMinute.clear();
   }
 
-  // Check if any cue should trigger
+  // Check if any cue should trigger today
   alarms.forEach((alarm) => {
     if (!alarm.is_enabled) return;
 
@@ -103,17 +116,25 @@ function tick() {
   renderAlarms();
 }
 
-// Render and Dynamic Sort: Next on Cue (Closest First)
+// Render and Dynamic Ephemeral Sort:
+// 1. Upcoming active cues (closest first)
+// 2. Inactive cues
+// 3. Passed cues from earlier today
 function renderAlarms() {
   const grid = document.getElementById("alarmsList");
   const emptyState = document.getElementById("emptyState");
   const activeCountBadge = document.getElementById("activeCountBadge");
+  const clearSlateBtn = document.getElementById("clearSlateBtn");
 
   if (!grid) return;
 
-  const activeCount = alarms.filter(a => a.is_enabled).length;
+  const activeCues = alarms.filter(a => a.is_enabled);
   if (activeCountBadge) {
-    activeCountBadge.textContent = `${activeCount} active`;
+    activeCountBadge.textContent = `${activeCues.length} active today`;
+  }
+
+  if (clearSlateBtn) {
+    clearSlateBtn.style.display = alarms.length > 0 ? "inline-flex" : "none";
   }
 
   if (alarms.length === 0) {
@@ -124,49 +145,80 @@ function renderAlarms() {
     if (emptyState) emptyState.style.display = "none";
   }
 
-  // Calculate countdowns and attach sort score
+  // Calculate status for each cue strictly today
   const enriched = alarms.map((alarm) => {
     if (!alarm.is_enabled) {
-      return { ...alarm, diffMs: Infinity, countdownStr: "Inactive" };
+      return { ...alarm, isPassed: false, diffMs: Infinity, sortGroup: 2, statusText: "Paused" };
     }
-    const { diffMs } = getNextOccurrence(alarm.time);
+
+    const { isPassed, diffMs } = getTodayCueStatus(alarm.time);
+
+    if (isPassed) {
+      return {
+        ...alarm,
+        isPassed: true,
+        diffMs,
+        sortGroup: 3,
+        statusText: "Passed today",
+      };
+    }
+
     return {
       ...alarm,
+      isPassed: false,
       diffMs,
-      countdownStr: formatCountdown(diffMs),
+      sortGroup: 1,
+      statusText: formatCountdown(diffMs),
     };
   });
 
-  // Sort: Active cues with smallest diffMs first, inactive cues at the end
-  enriched.sort((a, b) => a.diffMs - b.diffMs);
+  // Sort groups:
+  // Group 1: Upcoming active (ascending by remaining diffMs)
+  // Group 2: Paused/Inactive
+  // Group 3: Passed today (descending, so most recently passed is at top of passed group)
+  enriched.sort((a, b) => {
+    if (a.sortGroup !== b.sortGroup) {
+      return a.sortGroup - b.sortGroup;
+    }
+    if (a.sortGroup === 1) {
+      return a.diffMs - b.diffMs;
+    }
+    if (a.sortGroup === 3) {
+      return b.diffMs - a.diffMs;
+    }
+    return 0;
+  });
 
   // Identify next upcoming cue
-  const closestId = enriched.length > 0 && enriched[0].is_enabled ? enriched[0].id : null;
+  const nextCue = enriched.find(a => a.sortGroup === 1);
+  const closestId = nextCue ? nextCue.id : null;
 
   grid.innerHTML = enriched
     .map((alarm) => {
       const isClosest = alarm.id === closestId;
-      const isImminent = alarm.is_enabled && alarm.diffMs < 5 * 60 * 1000; // < 5 mins
+      const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000; // < 5 mins
+      const isPassed = alarm.sortGroup === 3;
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
 
       return `
-        <div class="alarm-card ${isClosest ? 'closest' : ''} ${!alarm.is_enabled ? 'disabled' : ''}" data-id="${alarm.id}">
+        <div class="alarm-card ${isClosest ? 'closest' : ''} ${!alarm.is_enabled ? 'disabled' : ''} ${isPassed ? 'passed' : ''}" data-id="${alarm.id}">
           ${isClosest ? '<span class="closest-ribbon">⭐ Next on Cue</span>' : ''}
+          ${isPassed ? '<span class="passed-ribbon">✓ Completed Today</span>' : ''}
           <div class="alarm-header">
             <div class="alarm-time-wrapper">
               <span class="alarm-time">${escapeHtml(alarm.time)}</span>
               <span class="alarm-title">${escapeHtml(alarm.title || "Cue")}</span>
             </div>
-            <label class="switch" title="Toggle Cue Active">
-              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} onchange="handleToggleAlarm(${alarm.id})">
+            <label class="switch" title="${isPassed ? 'Cue has already passed today' : 'Toggle Cue Active'}">
+              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} ${isPassed ? 'disabled' : ''} onchange="handleToggleAlarm(${alarm.id})">
               <span class="slider"></span>
             </label>
           </div>
 
           <div class="countdown-box">
-            <span class="countdown-label">${alarm.is_enabled ? "Time to Cue" : "Status"}</span>
-            <span class="countdown-val ${isImminent ? 'imminent' : ''}">
-              ${alarm.countdownStr}
+            <span class="countdown-label">${isPassed ? 'Status' : (alarm.is_enabled ? 'Time to Cue' : 'Status')}</span>
+            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : ''}">
+              ${alarm.statusText}
             </span>
           </div>
 
@@ -207,9 +259,9 @@ function openAlarmModal(alarmId = null) {
     enabledInput.checked = alarm.is_enabled;
     enabledGroup.style.display = "block";
   } else {
-    modalTitle.textContent = "Schedule Cue";
+    modalTitle.textContent = "Schedule Today's Cue";
     idInput.value = "";
-    // Default to next nearest 15 minutes
+    // Default to next nearest 15 minutes today
     const now = new Date();
     now.setMinutes(now.getMinutes() + 15);
     const defH = String(now.getHours()).padStart(2, "0");
@@ -293,6 +345,19 @@ async function handleDeleteAlarm(alarmId) {
   }
 }
 
+// Clear Today's Slate
+async function handleClearSlate() {
+  if (!confirm("Clear today's cue sheet and start with a blank slate?")) return;
+  try {
+    const res = await fetch("/api/alarms", { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to clear today's slate");
+    alarms = [];
+    renderAlarms();
+  } catch (err) {
+    alert("Error clearing slate: " + err.message);
+  }
+}
+
 // Calm, Resonant Two-Tone Theater Chime via Web Audio API
 function playChimeBeep() {
   try {
@@ -336,7 +401,7 @@ function playChimeBeep() {
 function startChime() {
   playChimeBeep();
   if (!chimeInterval) {
-    chimeInterval = setInterval(playChimeBeep, 1400); // Gentle 1.4s interval
+    chimeInterval = setInterval(playChimeBeep, 1400);
   }
 }
 
@@ -385,7 +450,7 @@ function snoozeCurrentAlarm() {
   if (modal) modal.style.display = "none";
 
   if (activeTriggerAlarm) {
-    // Standby: schedule temporary 5-minute future cue
+    // Standby: schedule temporary 5-minute future cue today
     const snoozeTime = new Date();
     snoozeTime.setMinutes(snoozeTime.getMinutes() + 5);
     const h = String(snoozeTime.getHours()).padStart(2, "0");

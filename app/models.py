@@ -121,3 +121,10 @@ def delete_alarm(db: sqlite3.Connection, alarm_id: int) -> bool:
     cursor = db.execute("DELETE FROM alarms WHERE id = ?", (alarm_id,))
     db.commit()
     return cursor.rowcount > 0
+
+def clear_all_alarms(db: sqlite3.Connection) -> int:
+    """Clear all cues from today's slate."""
+    cursor = db.execute("DELETE FROM alarms")
+    db.commit()
+    return cursor.rowcount
+

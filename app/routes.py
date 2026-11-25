@@ -2,6 +2,7 @@ from typing import Any, Dict
 from flask import Blueprint, jsonify, render_template, request
 from app.database import get_db
 from app.models import (
+    clear_all_alarms,
     create_alarm,
     delete_alarm,
     get_alarm_by_id,
@@ -22,6 +23,12 @@ def list_alarms():
     db = get_db()
     alarms = get_all_alarms(db)
     return jsonify({"alarms": alarms}), 200
+
+@bp.route("/api/alarms", methods=["DELETE"])
+def clear_slate():
+    db = get_db()
+    count = clear_all_alarms(db)
+    return jsonify({"success": True, "cleared_count": count}), 200
 
 @bp.route("/api/alarms", methods=["POST"])
 def add_alarm():
