@@ -696,6 +696,38 @@ input:checked + .slider:before {
   color: #fff;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-header-save {
+  display: none;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .btn-header-save {
+    display: inline-flex;
+  }
+  .btn-footer-save {
+    display: none;
+  }
+  .modal-card {
+    padding: 20px 18px;
+    margin-top: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .form-group.time-group {
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+  }
+}
+
 .modal-close {
   background: none;
   border: none;

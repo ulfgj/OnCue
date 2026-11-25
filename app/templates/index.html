@@ -89,13 +89,16 @@
     <div class="modal-card">
       <div class="modal-header">
         <h2 id="modalTitle">Schedule Today's Cue</h2>
-        <button class="modal-close" onclick="closeAlarmModal()">&times;</button>
+        <div class="modal-header-actions">
+          <button type="submit" form="alarmForm" class="btn btn-primary btn-header-save">Save Cue</button>
+          <button type="button" class="modal-close" onclick="closeAlarmModal()">&times;</button>
+        </div>
       </div>
 
       <form id="alarmForm" onsubmit="handleAlarmSubmit(event)">
         <input type="hidden" id="alarmId" value="">
 
-        <div class="form-group">
+        <div class="form-group time-group">
           <label for="alarmTime">Cue Time (Today, 24h format) *</label>
           <input type="time" id="alarmTime" required class="form-input time-input">
           <small class="form-help">Strictly for today. Completed cues retire peacefully at the end of the day.</small>
@@ -121,7 +124,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeAlarmModal()">Cancel</button>
-          <button type="submit" id="saveAlarmBtn" class="btn btn-primary">Save Cue</button>
+          <button type="submit" id="saveAlarmBtn" class="btn btn-primary btn-footer-save">Save Cue</button>
         </div>
       </form>
     </div>
