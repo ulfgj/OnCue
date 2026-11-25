@@ -1011,3 +1011,67 @@ input:checked + .slider:before {
 .settings-danger-section .danger-title {
   color: #f87171;
 }
+
+/* Stepper Control (+ / -) */
+.snooze-control-wrapper {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.snooze-control-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.stepper-control {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(9, 13, 22, 0.7);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.btn-stepper {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f1f5f9;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-stepper:hover {
+  background-color: #334155;
+  color: var(--accent-cue);
+  border-color: #475569;
+}
+
+.btn-stepper:active {
+  transform: scale(0.95);
+}
+
+.stepper-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-cue);
+  padding: 0 12px;
+  min-width: 70px;
+  text-align: center;
+}

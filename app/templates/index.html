@@ -140,9 +140,18 @@
       <h3 id="alertTitleDisplay" class="alert-title">Cue Title</h3>
       <div id="alertNotesDisplay" class="alert-notes"></div>
 
+      <div class="snooze-control-wrapper">
+        <label class="snooze-control-label">Standby Duration:</label>
+        <div class="stepper-control">
+          <button type="button" class="btn-stepper" onclick="adjustTriggerSnooze(-5)" title="Decrease by 5 min">–</button>
+          <span id="triggerSnoozeDisplay" class="stepper-value">5 min</span>
+          <button type="button" class="btn-stepper" onclick="adjustTriggerSnooze(5)" title="Increase by 5 min">＋</button>
+        </div>
+      </div>
+
       <div class="alert-actions">
-        <button class="btn btn-standby" onclick="snoozeCurrentAlarm()">💤 Snooze (+5m)</button>
-        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Dismiss</button>
+        <button id="triggerSnoozeBtn" class="btn btn-standby" onclick="snoozeCurrentAlarm()">⏸ Stand by (+5m)</button>
+        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Step In (Acknowledge)</button>
       </div>
     </div>
   </div>
@@ -158,6 +167,16 @@
         <div class="settings-section">
           <h3 class="settings-section-title">About OnCue</h3>
           <p class="settings-desc">Ephemeral day-bound cue scheduler. Designed to keep you in flow without morning-after alarm clutter.</p>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-title">Default Standby Duration</h3>
+          <p class="settings-desc">Set your preferred default snooze interval when a cue rings (5 min increments).</p>
+          <div class="stepper-control" style="margin-top: 10px;">
+            <button type="button" class="btn-stepper" onclick="adjustDefaultSnooze(-5)" title="Decrease default by 5 min">–</button>
+            <span id="defaultSnoozeDisplay" class="stepper-value">5 min</span>
+            <button type="button" class="btn-stepper" onclick="adjustDefaultSnooze(5)" title="Increase default by 5 min">＋</button>
+          </div>
         </div>
 
         <div class="settings-section settings-danger-section">

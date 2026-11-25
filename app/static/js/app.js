@@ -4,12 +4,15 @@ let audioCtx = null;
 let chimeInterval = null;
 let activeTriggerAlarm = null;
 let currentView = localStorage.getItem("oncue_view") || "grid";
+let defaultSnoozeMinutes = parseInt(localStorage.getItem("oncue_default_snooze"), 10) || 5;
+let triggerSnoozeMinutes = defaultSnoozeMinutes;
 let lastKnownDay = new Date().getDate();
 const triggeredAlarmIdsThisMinute = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
   initClock();
   initViewSwitcher();
+  updateDefaultSnoozeDisplay();
   fetchAlarms();
   setInterval(tick, 1000);
 
@@ -529,9 +532,35 @@ function stopChime() {
   }
 }
 
+// Snooze / Standby Interval Controls (+ / -)
+function updateDefaultSnoozeDisplay() {
+  const el = document.getElementById("defaultSnoozeDisplay");
+  if (el) el.textContent = `${defaultSnoozeMinutes} min`;
+}
+
+function adjustDefaultSnooze(delta) {
+  defaultSnoozeMinutes = Math.max(5, Math.min(120, defaultSnoozeMinutes + delta));
+  localStorage.setItem("oncue_default_snooze", defaultSnoozeMinutes);
+  updateDefaultSnoozeDisplay();
+}
+
+function updateTriggerSnoozeDisplay() {
+  const displayEl = document.getElementById("triggerSnoozeDisplay");
+  const btnEl = document.getElementById("triggerSnoozeBtn");
+  if (displayEl) displayEl.textContent = `${triggerSnoozeMinutes} min`;
+  if (btnEl) btnEl.textContent = `⏸ Stand by (+${triggerSnoozeMinutes}m)`;
+}
+
+function adjustTriggerSnooze(delta) {
+  triggerSnoozeMinutes = Math.max(5, Math.min(120, triggerSnoozeMinutes + delta));
+  updateTriggerSnoozeDisplay();
+}
+
 // Trigger Cue Event
 function triggerAlarm(alarm) {
   activeTriggerAlarm = alarm;
+  triggerSnoozeMinutes = defaultSnoozeMinutes;
+  updateTriggerSnoozeDisplay();
   startChime();
 
   const modal = document.getElementById("triggerModal");
@@ -567,27 +596,37 @@ function snoozeCurrentAlarm() {
   if (modal) modal.style.display = "none";
 
   if (activeTriggerAlarm) {
-    // Standby: schedule temporary 5-minute future cue today
+    const cueToUpdate = activeTriggerAlarm;
+    // Calculate new delayed time today
     const snoozeTime = new Date();
-    snoozeTime.setMinutes(snoozeTime.getMinutes() + 5);
+    snoozeTime.setMinutes(snoozeTime.getMinutes() + triggerSnoozeMinutes);
     const h = String(snoozeTime.getHours()).padStart(2, "0");
     const m = String(snoozeTime.getMinutes()).padStart(2, "0");
+    const newTime = `${h}:${m}`;
 
-    fetch("/api/alarms", {
-      method: "POST",
+    // Update existing cue in place (do NOT create a duplicate cue)
+    fetch(`/api/alarms/${cueToUpdate.id}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        time: `${h}:${m}`,
-        title: `[Snoozed] ${activeTriggerAlarm.title || "Cue"}`,
-        notes: activeTriggerAlarm.notes,
+        time: newTime,
+        title: cueToUpdate.title,
+        notes: cueToUpdate.notes,
+        is_enabled: true,
       }),
     })
-      .then((r) => r.json())
-      .then((newAlarm) => {
-        alarms.push(newAlarm);
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to update cue time for standby");
+        return r.json();
+      })
+      .then((updatedAlarm) => {
+        const idx = alarms.findIndex((a) => a.id === updatedAlarm.id);
+        if (idx !== -1) {
+          alarms[idx] = updatedAlarm;
+        }
         renderAlarms();
       })
-      .catch((e) => console.error("Failed to set standby cue:", e));
+      .catch((e) => console.error("Failed to standby cue:", e));
   }
 
   activeTriggerAlarm = null;
