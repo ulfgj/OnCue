@@ -24,11 +24,11 @@
       </div>
 
       <div class="header-actions">
-        <button id="clearSlateBtn" class="btn btn-secondary btn-outline" style="display: none;" title="Clear all cues for today and start with a blank slate">
-          🧹 Clear Slate
-        </button>
         <button id="openAddModalBtn" class="btn btn-primary">
           <span class="btn-icon">＋</span> New Cue
+        </button>
+        <button id="openSettingsBtn" class="btn btn-icon-only" title="Settings" onclick="openSettingsModal()">
+          ⚙️
         </button>
       </div>
     </header>
@@ -138,8 +138,55 @@
       <div id="alertNotesDisplay" class="alert-notes"></div>
 
       <div class="alert-actions">
-        <button class="btn btn-standby" onclick="snoozeCurrentAlarm()">💤 Snooze (+5m)</button>
-        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Dismiss</button>
+        <button class="btn btn-standby" onclick="snoozeCurrentAlarm()">⏸ Stand by (+5m)</button>
+        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Step In (Acknowledge)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card settings-modal-card">
+      <div class="modal-header">
+        <h2>⚙️ Settings & Preferences</h2>
+        <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h3 class="settings-section-title">About OnCue</h3>
+          <p class="settings-desc">Ephemeral day-bound cue scheduler. Designed to keep you in flow without morning-after alarm clutter.</p>
+        </div>
+
+        <div class="settings-section settings-danger-section">
+          <h3 class="settings-section-title danger-title"><span class="danger-icon">⚠️</span> Danger Zone</h3>
+          <p class="settings-desc">Permanently wipe all scheduled cues for today and return to a blank canvas.</p>
+          <div style="margin-top: 12px;">
+            <button id="settingsClearSlateBtn" class="btn btn-danger-outline" onclick="openClearSlateModal()">
+              🧹 Clear Today's Slate
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 24px;">
+        <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Slate Confirmation Modal -->
+  <div id="clearSlateModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card danger-modal-card">
+      <div class="modal-header">
+        <h2 style="color: #f87171;">⚠️ Clear Today's Slate?</h2>
+        <button class="modal-close" onclick="closeClearSlateModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>You are about to erase <strong id="clearSlateCount">0 cues</strong> from today's schedule.</p>
+        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.875rem;">This cannot be undone. Active cues will stop counting down and will not sound.</p>
+      </div>
+      <div class="modal-footer" style="margin-top: 24px;">
+        <button type="button" class="btn btn-secondary" onclick="closeClearSlateModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="confirmClearSlate()">Yes, Clear Entire Slate</button>
       </div>
     </div>
   </div>

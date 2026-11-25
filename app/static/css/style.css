@@ -868,3 +868,105 @@ input:checked + .slider:before {
   justify-content: center;
   gap: 14px;
 }
+
+/* Danger Zone */
+.danger-zone {
+  margin-top: 48px;
+  padding: 20px 24px;
+  background-color: rgba(239, 68, 68, 0.04);
+  border: 1px dashed rgba(239, 68, 68, 0.3);
+  border-radius: var(--card-radius);
+  transition: border-color 0.2s ease;
+}
+
+.danger-zone:hover {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.danger-zone-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.danger-zone-title {
+  color: #f87171;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.danger-zone-desc {
+  color: var(--text-muted);
+  font-size: 0.825rem;
+}
+
+.danger-modal-card {
+  max-width: 440px;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Gear Icon & Settings */
+.btn-icon-only {
+  background: var(--surface-hover);
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-only:hover {
+  background-color: #334155;
+  color: #fff;
+  border-color: #475569;
+}
+
+.settings-modal-card {
+  max-width: 500px;
+}
+
+.settings-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.settings-section:first-child {
+  padding-top: 0;
+}
+
+.settings-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.settings-desc {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.settings-danger-section {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px dashed rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  background-color: rgba(239, 68, 68, 0.04);
+}
+
+.settings-danger-section .danger-title {
+  color: #f87171;
+}

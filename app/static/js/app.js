@@ -16,11 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("openAddModalBtn").addEventListener("click", () => {
     openAlarmModal();
   });
-
-  const clearSlateBtn = document.getElementById("clearSlateBtn");
-  if (clearSlateBtn) {
-    clearSlateBtn.addEventListener("click", handleClearSlate);
-  }
 });
 
 // View Switcher (Grid vs. Table)
@@ -159,7 +154,7 @@ function renderAlarms() {
   const tableBody = document.getElementById("alarmsTableBody");
   const emptyState = document.getElementById("emptyState");
   const activeCountBadge = document.getElementById("activeCountBadge");
-  const clearSlateBtn = document.getElementById("clearSlateBtn");
+  const dangerZone = document.getElementById("dangerZone");
 
   if (!grid || !tableBody) return;
 
@@ -168,8 +163,8 @@ function renderAlarms() {
     activeCountBadge.textContent = `${activeCues.length} active today`;
   }
 
-  if (clearSlateBtn) {
-    clearSlateBtn.style.display = alarms.length > 0 ? "inline-flex" : "none";
+  if (dangerZone) {
+    dangerZone.style.display = alarms.length > 0 ? "block" : "none";
   }
 
   if (alarms.length === 0) {
@@ -438,13 +433,40 @@ async function handleDeleteAlarm(alarmId) {
   }
 }
 
-// Clear Today's Slate
-async function handleClearSlate() {
-  if (!confirm("Clear today's cue sheet and start with a blank slate?")) return;
+// Settings Modal
+function openSettingsModal() {
+  const modal = document.getElementById("settingsModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById("settingsModal");
+  if (modal) modal.style.display = "none";
+}
+
+// Clear Today's Slate Danger Modal
+function openClearSlateModal() {
+  const modal = document.getElementById("clearSlateModal");
+  const countEl = document.getElementById("clearSlateCount");
+  if (countEl) {
+    const cueCount = alarms.length;
+    countEl.textContent = `${cueCount} cue${cueCount === 1 ? '' : 's'}`;
+  }
+  if (modal) modal.style.display = "flex";
+}
+
+function closeClearSlateModal() {
+  const modal = document.getElementById("clearSlateModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function confirmClearSlate() {
   try {
     const res = await fetch("/api/alarms", { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to clear today's slate");
     alarms = [];
+    closeClearSlateModal();
+    closeSettingsModal();
     renderAlarms();
   } catch (err) {
     alert("Error clearing slate: " + err.message);
