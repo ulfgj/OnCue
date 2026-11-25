@@ -40,11 +40,38 @@
           <span id="activeCountBadge" class="badge badge-info">0 active today</span>
           <span class="sort-indicator">Arranged by: <strong>Next on Cue</strong></span>
         </div>
+
+        <div class="view-switcher" role="group" aria-label="View layout">
+          <button id="viewGridBtn" class="btn-toggle active" title="Grid / Card view" onclick="switchView('grid')">
+            <span class="view-icon">▦</span> Cards
+          </button>
+          <button id="viewTableBtn" class="btn-toggle" title="Table / List view" onclick="switchView('table')">
+            <span class="view-icon">☰</span> Table
+          </button>
+        </div>
       </div>
 
-      <!-- Cues List Container -->
+      <!-- Cues Container (Grid or Table) -->
       <div id="alarmsList" class="alarms-grid">
         <!-- Rendered dynamically via JS -->
+      </div>
+
+      <div id="alarmsTableContainer" class="table-container" style="display: none;">
+        <table class="cues-table">
+          <thead>
+            <tr>
+              <th class="th-status">Status</th>
+              <th class="th-time">Time</th>
+              <th class="th-cue">Cue & Context Brief</th>
+              <th class="th-countdown">Time to Cue</th>
+              <th class="th-toggle">Active</th>
+              <th class="th-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="alarmsTableBody">
+            <!-- Rendered dynamically via JS -->
+          </tbody>
+        </table>
       </div>
 
       <!-- Empty State -->

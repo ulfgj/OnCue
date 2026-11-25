@@ -3,11 +3,13 @@ let alarms = [];
 let audioCtx = null;
 let chimeInterval = null;
 let activeTriggerAlarm = null;
+let currentView = localStorage.getItem("oncue_view") || "grid";
 let lastKnownDay = new Date().getDate();
 const triggeredAlarmIdsThisMinute = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
   initClock();
+  initViewSwitcher();
   fetchAlarms();
   setInterval(tick, 1000);
 
@@ -20,6 +22,37 @@ document.addEventListener("DOMContentLoaded", () => {
     clearSlateBtn.addEventListener("click", handleClearSlate);
   }
 });
+
+// View Switcher (Grid vs. Table)
+function initViewSwitcher() {
+  switchView(currentView, false);
+}
+
+function switchView(view, save = true) {
+  currentView = view;
+  if (save) {
+    localStorage.setItem("oncue_view", view);
+  }
+
+  const gridBtn = document.getElementById("viewGridBtn");
+  const tableBtn = document.getElementById("viewTableBtn");
+  const gridContainer = document.getElementById("alarmsList");
+  const tableContainer = document.getElementById("alarmsTableContainer");
+
+  if (view === "table") {
+    if (gridBtn) gridBtn.classList.remove("active");
+    if (tableBtn) tableBtn.classList.add("active");
+    if (gridContainer) gridContainer.style.display = "none";
+    if (tableContainer) tableContainer.style.display = "block";
+  } else {
+    if (tableBtn) tableBtn.classList.remove("active");
+    if (gridBtn) gridBtn.classList.add("active");
+    if (tableContainer) tableContainer.style.display = "none";
+    if (gridContainer) gridContainer.style.display = "grid";
+  }
+
+  renderAlarms();
+}
 
 // Digital Clock in Header & Midnight Date Flip Detection
 function initClock() {
@@ -122,11 +155,13 @@ function tick() {
 // 3. Passed cues from earlier today
 function renderAlarms() {
   const grid = document.getElementById("alarmsList");
+  const tableContainer = document.getElementById("alarmsTableContainer");
+  const tableBody = document.getElementById("alarmsTableBody");
   const emptyState = document.getElementById("emptyState");
   const activeCountBadge = document.getElementById("activeCountBadge");
   const clearSlateBtn = document.getElementById("clearSlateBtn");
 
-  if (!grid) return;
+  if (!grid || !tableBody) return;
 
   const activeCues = alarms.filter(a => a.is_enabled);
   if (activeCountBadge) {
@@ -139,10 +174,20 @@ function renderAlarms() {
 
   if (alarms.length === 0) {
     grid.innerHTML = "";
+    tableBody.innerHTML = "";
     if (emptyState) emptyState.style.display = "block";
+    if (tableContainer) tableContainer.style.display = "none";
+    if (grid) grid.style.display = "none";
     return;
   } else {
     if (emptyState) emptyState.style.display = "none";
+    if (currentView === "table") {
+      if (tableContainer) tableContainer.style.display = "block";
+      if (grid) grid.style.display = "none";
+    } else {
+      if (grid) grid.style.display = "grid";
+      if (tableContainer) tableContainer.style.display = "none";
+    }
   }
 
   // Calculate status for each cue strictly today
@@ -193,6 +238,7 @@ function renderAlarms() {
   const nextCue = enriched.find(a => a.sortGroup === 1);
   const closestId = nextCue ? nextCue.id : null;
 
+  // 1. Render Grid View
   grid.innerHTML = enriched
     .map((alarm) => {
       const isClosest = alarm.id === closestId;
@@ -229,6 +275,53 @@ function renderAlarms() {
             <button class="btn btn-danger-outline btn-sm" onclick="handleDeleteAlarm(${alarm.id})">🗑️ Delete</button>
           </div>
         </div>
+      `;
+    })
+    .join("");
+
+  // 2. Render Table View
+  tableBody.innerHTML = enriched
+    .map((alarm) => {
+      const isClosest = alarm.id === closestId;
+      const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000;
+      const isPassed = alarm.sortGroup === 3;
+      const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
+
+      let statusBadge = '<span class="badge badge-info">Active</span>';
+      if (isClosest) {
+        statusBadge = '<span class="closest-ribbon" style="margin-bottom: 0;">⭐ Next</span>';
+      } else if (isPassed) {
+        statusBadge = '<span class="passed-ribbon" style="margin-bottom: 0;">✓ Done</span>';
+      } else if (!alarm.is_enabled) {
+        statusBadge = '<span class="badge" style="background:#334155; color:#94a3b8;">Paused</span>';
+      }
+
+      return `
+        <tr class="${isClosest ? 'row-closest' : ''} ${isPassed ? 'row-passed' : ''}" data-id="${alarm.id}">
+          <td class="td-status">${statusBadge}</td>
+          <td class="td-time">${escapeHtml(alarm.time)}</td>
+          <td class="td-cue">
+            <div class="cue-row-title">${escapeHtml(alarm.title || "Cue")}</div>
+            ${hasNotes ? `<div class="cue-row-notes" title="${escapeHtml(alarm.notes)}">${escapeHtml(alarm.notes)}</div>` : '<div class="cue-row-notes" style="font-style: italic;">No context brief</div>'}
+          </td>
+          <td class="td-countdown">
+            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : ''}">
+              ${alarm.statusText}
+            </span>
+          </td>
+          <td class="td-toggle">
+            <label class="switch" title="${isPassed ? 'Cue has already passed today' : 'Toggle Cue Active'}">
+              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} ${isPassed ? 'disabled' : ''} onchange="handleToggleAlarm(${alarm.id})">
+              <span class="slider"></span>
+            </label>
+          </td>
+          <td class="td-actions">
+            <div class="card-actions">
+              <button class="btn btn-secondary btn-sm" onclick="openAlarmModal(${alarm.id})" title="Edit Cue">✏️</button>
+              <button class="btn btn-danger-outline btn-sm" onclick="handleDeleteAlarm(${alarm.id})" title="Delete Cue">🗑️</button>
+            </div>
+          </td>
+        </tr>
       `;
     })
     .join("");

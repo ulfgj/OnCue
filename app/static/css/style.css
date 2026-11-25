@@ -103,8 +103,192 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 18px;
   padding: 0 6px;
+}
+
+.status-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* View Switcher */
+.view-switcher {
+  display: inline-flex;
+  background-color: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.btn-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.825rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-toggle:hover {
+  color: #fff;
+}
+
+.btn-toggle.active {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.view-icon {
+  font-size: 0.9rem;
+}
+
+/* Table View */
+.table-container {
+  background-color: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--card-radius);
+  overflow-x: auto;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.cues-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.cues-table thead th {
+  background-color: rgba(9, 13, 22, 0.6);
+  color: var(--text-muted);
+  font-size: 0.775rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--surface-border);
+  white-space: nowrap;
+}
+
+.cues-table tbody tr {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  transition: background-color 0.15s ease;
+}
+
+.cues-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.cues-table tbody tr:hover {
+  background-color: var(--surface-hover);
+}
+
+/* Table Row Priority: Closest */
+.cues-table tr.row-closest {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
+  border-left: 3px solid var(--accent-cue);
+}
+
+.cues-table tr.row-closest .td-time {
+  color: var(--accent-cue);
+}
+
+.cues-table tr.row-closest .td-countdown .countdown-val {
+  color: var(--accent-cue);
+}
+
+/* Table Row: Passed */
+.cues-table tr.row-passed {
+  opacity: 0.5;
+  background-color: rgba(9, 13, 22, 0.3);
+}
+
+.cues-table tr.row-passed .td-time {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+/* Table Cells */
+.cues-table td {
+  padding: 14px 16px;
+  vertical-align: middle;
+}
+
+.td-status {
+  width: 110px;
+}
+
+.td-time {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.td-cue {
+  max-width: 380px;
+}
+
+.cue-row-title {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 0.98rem;
+  margin-bottom: 2px;
+}
+
+.cue-row-notes {
+  font-size: 0.825rem;
+  color: #94a3b8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.td-countdown {
+  white-space: nowrap;
+}
+
+.td-countdown .countdown-val {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.td-toggle {
+  width: 70px;
+  text-align: center;
+}
+
+.td-actions {
+  width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.td-actions .card-actions {
+  border-top: none;
+  padding-top: 0;
+  display: inline-flex;
+  gap: 6px;
 }
 
 .badge {
