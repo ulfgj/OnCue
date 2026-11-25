@@ -285,10 +285,8 @@ function renderAlarms() {
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
 
       let statusBadge = '<span class="badge badge-info">Active</span>';
-      if (isClosest) {
-        statusBadge = '<span class="closest-ribbon" style="margin-bottom: 0;">⭐ Next</span>';
-      } else if (isPassed) {
-        statusBadge = '<span class="passed-ribbon" style="margin-bottom: 0;">✓ Done</span>';
+      if (isPassed) {
+        statusBadge = '<span class="badge" style="background:#1e293b; color:#94a3b8;">Passed</span>';
       } else if (!alarm.is_enabled) {
         statusBadge = '<span class="badge" style="background:#334155; color:#94a3b8;">Paused</span>';
       }
