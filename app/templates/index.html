@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Precision Alarm Clock</title>
+  <title>OnCue — Stay in flow. Step in on cue.</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,8 +14,8 @@
     <!-- Header with Live Clock & Add Button -->
     <header class="app-header">
       <div class="header-left">
-        <h1 class="app-title">⏰ Alarm Clock</h1>
-        <p class="app-subtitle">Closest alarms prioritized automatically</p>
+        <h1 class="app-title"><span class="brand-cue">On</span><span class="brand-highlight">Cue</span></h1>
+        <p class="app-subtitle">Stay in flow. Step in on cue.</p>
       </div>
 
       <div class="clock-display" id="clockDisplay">
@@ -25,7 +25,7 @@
 
       <div class="header-actions">
         <button id="openAddModalBtn" class="btn btn-primary">
-          <span class="btn-icon">＋</span> New Alarm
+          <span class="btn-icon">＋</span> New Cue
         </button>
       </div>
     </header>
@@ -35,21 +35,21 @@
       <div class="list-controls">
         <div class="status-summary">
           <span id="activeCountBadge" class="badge badge-info">0 active</span>
-          <span class="sort-indicator">Sorted by: <strong>Closest First</strong></span>
+          <span class="sort-indicator">Arranged by: <strong>Next on Cue</strong></span>
         </div>
       </div>
 
-      <!-- Alarms List Container -->
+      <!-- Cues List Container -->
       <div id="alarmsList" class="alarms-grid">
         <!-- Rendered dynamically via JS -->
       </div>
 
       <!-- Empty State -->
       <div id="emptyState" class="empty-state" style="display: none;">
-        <div class="empty-icon">🔔</div>
-        <h3>No alarms configured</h3>
-        <p>Set your first alarm to start tracking your daily schedule with live countdowns.</p>
-        <button class="btn btn-primary" onclick="openAlarmModal()">Add First Alarm</button>
+        <div class="empty-icon">🎭</div>
+        <h3>No cues scheduled</h3>
+        <p>Set your first cue to stay in your flow, fully confident you'll step in right on time.</p>
+        <button class="btn btn-primary" onclick="openAlarmModal()">Create First Cue</button>
       </div>
     </main>
   </div>
@@ -58,7 +58,7 @@
   <div id="alarmModal" class="modal-backdrop" style="display: none;">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="modalTitle">Add Alarm</h2>
+        <h2 id="modalTitle">Schedule Cue</h2>
         <button class="modal-close" onclick="closeAlarmModal()">&times;</button>
       </div>
 
@@ -66,49 +66,50 @@
         <input type="hidden" id="alarmId" value="">
 
         <div class="form-group">
-          <label for="alarmTime">Alarm Time (24h format) *</label>
+          <label for="alarmTime">Cue Time (24h format) *</label>
           <input type="time" id="alarmTime" required class="form-input time-input">
-          <small class="form-help">Next trigger automatically calculates today or tomorrow based on current time.</small>
+          <small class="form-help">Automatically targets today or rolls over to tomorrow if the time has already passed.</small>
         </div>
 
         <div class="form-group">
-          <label for="alarmTitle">Label / Title</label>
-          <input type="text" id="alarmTitle" placeholder="e.g. Morning Standup, Medicine, Deep Work" class="form-input" maxlength="100">
+          <label for="alarmTitle">Cue Title / Scene</label>
+          <input type="text" id="alarmTitle" placeholder="e.g. Design Sync, Deep Work Block, Wrap Up" class="form-input" maxlength="100">
         </div>
 
         <div class="form-group">
-          <label for="alarmNotes">Arbitrary Data / Notes (Multiline)</label>
-          <textarea id="alarmNotes" rows="5" class="form-input multiline-input" placeholder="Add arbitrary information, tasks, URLs, checklists, or notes here..."></textarea>
-          <small class="form-help">Accepts multiline text. Line breaks and spacing are preserved.</small>
+          <label for="alarmNotes">Cue Brief / Context (Multiline)</label>
+          <textarea id="alarmNotes" rows="5" class="form-input multiline-input" placeholder="Add arbitrary information, tasks, checklist, URLs, or notes you'll need when you step in..."></textarea>
+          <small class="form-help">Line breaks, checklists, and formatted spacing are preserved.</small>
         </div>
 
         <div class="form-group checkbox-group" id="enabledFieldGroup" style="display: none;">
           <label class="toggle-label">
             <input type="checkbox" id="alarmEnabled" checked>
-            <span class="toggle-text">Alarm is enabled</span>
+            <span class="toggle-text">Cue is active</span>
           </label>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeAlarmModal()">Cancel</button>
-          <button type="submit" id="saveAlarmBtn" class="btn btn-primary">Save Alarm</button>
+          <button type="submit" id="saveAlarmBtn" class="btn btn-primary">Save Cue</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Alarm Trigger Modal (Sound + Alert) -->
+  <!-- Cue Trigger Modal (Theater Chime + Alert) -->
   <div id="triggerModal" class="modal-backdrop alert-backdrop" style="display: none;">
     <div class="modal-card alert-card">
-      <div class="alarm-pulsing-icon">⏰</div>
-      <h2 class="alert-heading">ALARM RINGING!</h2>
+      <div class="cue-pulsing-icon">🎭</div>
+      <div class="alert-badge">STEP IN</div>
+      <h2 class="alert-heading">You're On Cue</h2>
       <div id="alertTimeDisplay" class="alert-time">00:00</div>
-      <h3 id="alertTitleDisplay" class="alert-title">Alarm Title</h3>
+      <h3 id="alertTitleDisplay" class="alert-title">Cue Title</h3>
       <div id="alertNotesDisplay" class="alert-notes"></div>
 
       <div class="alert-actions">
-        <button class="btn btn-warning" onclick="snoozeCurrentAlarm()">💤 Snooze (+5 min)</button>
-        <button class="btn btn-danger" onclick="dismissCurrentAlarm()">✓ Dismiss</button>
+        <button class="btn btn-standby" onclick="snoozeCurrentAlarm()">⏸ Stand by (+5m)</button>
+        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Step In (Acknowledge)</button>
       </div>
     </div>
   </div>

@@ -1,4 +1,4 @@
-// Precision Alarm Clock Engine
+// OnCue — Stay in flow. Step in on cue.
 let alarms = [];
 let audioCtx = null;
 let chimeInterval = null;
@@ -32,16 +32,16 @@ function updateClock() {
   if (digitalDateEl) digitalDateEl.textContent = dateStr;
 }
 
-// Fetch Alarms from Backend
+// Fetch Cues from Backend
 async function fetchAlarms() {
   try {
     const res = await fetch("/api/alarms");
-    if (!res.ok) throw new Error("Failed to load alarms");
+    if (!res.ok) throw new Error("Failed to load cues");
     const data = await res.json();
     alarms = data.alarms || [];
     renderAlarms();
   } catch (err) {
-    console.error("Error fetching alarms:", err);
+    console.error("Error fetching cues:", err);
   }
 }
 
@@ -77,14 +77,13 @@ function formatCountdown(diffMs) {
 // Tick function running every second
 function tick() {
   const now = new Date();
-  const currentMinutesKey = `${now.getHours()}:${now.getMinutes()}`;
 
   // Clear triggered set once minute changes
   if (now.getSeconds() === 0) {
     triggeredAlarmIdsThisMinute.clear();
   }
 
-  // Check if any alarm should trigger
+  // Check if any cue should trigger
   alarms.forEach((alarm) => {
     if (!alarm.is_enabled) return;
 
@@ -100,11 +99,11 @@ function tick() {
     }
   });
 
-  // Re-render countdowns and ensure sorted order
+  // Re-render countdowns and maintain closest-first sorted order
   renderAlarms();
 }
 
-// Render and Dynamic Sort: Closest Alarms First
+// Render and Dynamic Sort: Next on Cue (Closest First)
 function renderAlarms() {
   const grid = document.getElementById("alarmsList");
   const emptyState = document.getElementById("emptyState");
@@ -128,7 +127,7 @@ function renderAlarms() {
   // Calculate countdowns and attach sort score
   const enriched = alarms.map((alarm) => {
     if (!alarm.is_enabled) {
-      return { ...alarm, diffMs: Infinity, countdownStr: "Disabled" };
+      return { ...alarm, diffMs: Infinity, countdownStr: "Inactive" };
     }
     const { diffMs } = getNextOccurrence(alarm.time);
     return {
@@ -138,10 +137,10 @@ function renderAlarms() {
     };
   });
 
-  // Sort: Enabled alarms with smallest diffMs first, disabled alarms at the end
+  // Sort: Active cues with smallest diffMs first, inactive cues at the end
   enriched.sort((a, b) => a.diffMs - b.diffMs);
 
-  // Identify closest enabled alarm
+  // Identify next upcoming cue
   const closestId = enriched.length > 0 && enriched[0].is_enabled ? enriched[0].id : null;
 
   grid.innerHTML = enriched
@@ -152,26 +151,26 @@ function renderAlarms() {
 
       return `
         <div class="alarm-card ${isClosest ? 'closest' : ''} ${!alarm.is_enabled ? 'disabled' : ''}" data-id="${alarm.id}">
-          ${isClosest ? '<span class="closest-ribbon">⭐ Next Alarm</span>' : ''}
+          ${isClosest ? '<span class="closest-ribbon">⭐ Next on Cue</span>' : ''}
           <div class="alarm-header">
             <div class="alarm-time-wrapper">
               <span class="alarm-time">${escapeHtml(alarm.time)}</span>
-              <span class="alarm-title">${escapeHtml(alarm.title || "Alarm")}</span>
+              <span class="alarm-title">${escapeHtml(alarm.title || "Cue")}</span>
             </div>
-            <label class="switch" title="Toggle Alarm">
+            <label class="switch" title="Toggle Cue Active">
               <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} onchange="handleToggleAlarm(${alarm.id})">
               <span class="slider"></span>
             </label>
           </div>
 
           <div class="countdown-box">
-            <span class="countdown-label">${alarm.is_enabled ? "Countdown" : "Status"}</span>
+            <span class="countdown-label">${alarm.is_enabled ? "Time to Cue" : "Status"}</span>
             <span class="countdown-val ${isImminent ? 'imminent' : ''}">
               ${alarm.countdownStr}
             </span>
           </div>
 
-          <div class="alarm-notes ${!hasNotes ? 'empty' : ''}">${hasNotes ? escapeHtml(alarm.notes) : 'No notes added.'}</div>
+          <div class="alarm-notes ${!hasNotes ? 'empty' : ''}">${hasNotes ? escapeHtml(alarm.notes) : 'No context brief provided.'}</div>
 
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="openAlarmModal(${alarm.id})">✏️ Edit</button>
@@ -200,7 +199,7 @@ function openAlarmModal(alarmId = null) {
   if (alarmId) {
     const alarm = alarms.find((a) => a.id === alarmId);
     if (!alarm) return;
-    modalTitle.textContent = "Edit Alarm";
+    modalTitle.textContent = "Edit Cue";
     idInput.value = alarm.id;
     timeInput.value = alarm.time;
     titleInput.value = alarm.title;
@@ -208,9 +207,9 @@ function openAlarmModal(alarmId = null) {
     enabledInput.checked = alarm.is_enabled;
     enabledGroup.style.display = "block";
   } else {
-    modalTitle.textContent = "Add New Alarm";
+    modalTitle.textContent = "Schedule Cue";
     idInput.value = "";
-    // Default to next nearest full 15 minutes
+    // Default to next nearest 15 minutes
     const now = new Date();
     now.setMinutes(now.getMinutes() + 15);
     const defH = String(now.getHours()).padStart(2, "0");
@@ -244,7 +243,7 @@ async function handleAlarmSubmit(e) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ time, title, notes, is_enabled }),
       });
-      if (!res.ok) throw new Error("Failed to update alarm");
+      if (!res.ok) throw new Error("Failed to update cue");
       const updated = await res.json();
       const idx = alarms.findIndex((a) => a.id === Number(id));
       if (idx !== -1) alarms[idx] = updated;
@@ -255,7 +254,7 @@ async function handleAlarmSubmit(e) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ time, title, notes }),
       });
-      if (!res.ok) throw new Error("Failed to create alarm");
+      if (!res.ok) throw new Error("Failed to create cue");
       const created = await res.json();
       alarms.push(created);
     }
@@ -271,30 +270,30 @@ async function handleAlarmSubmit(e) {
 async function handleToggleAlarm(alarmId) {
   try {
     const res = await fetch(`/api/alarms/${alarmId}/toggle`, { method: "PATCH" });
-    if (!res.ok) throw new Error("Failed to toggle alarm");
+    if (!res.ok) throw new Error("Failed to toggle cue status");
     const updated = await res.json();
     const idx = alarms.findIndex((a) => a.id === alarmId);
     if (idx !== -1) alarms[idx] = updated;
     renderAlarms();
   } catch (err) {
-    alert("Error toggling alarm: " + err.message);
+    alert("Error toggling cue: " + err.message);
   }
 }
 
-// Delete alarm
+// Delete cue
 async function handleDeleteAlarm(alarmId) {
-  if (!confirm("Are you sure you want to delete this alarm?")) return;
+  if (!confirm("Are you sure you want to remove this cue?")) return;
   try {
     const res = await fetch(`/api/alarms/${alarmId}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete alarm");
+    if (!res.ok) throw new Error("Failed to remove cue");
     alarms = alarms.filter((a) => a.id !== alarmId);
     renderAlarms();
   } catch (err) {
-    alert("Error deleting alarm: " + err.message);
+    alert("Error removing cue: " + err.message);
   }
 }
 
-// Synthesized Audio Alarm Chime via Web Audio API
+// Calm, Resonant Two-Tone Theater Chime via Web Audio API
 function playChimeBeep() {
   try {
     if (!audioCtx) {
@@ -304,22 +303,31 @@ function playChimeBeep() {
       audioCtx.resume();
     }
 
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    const t = audioCtx.currentTime;
 
-    osc.type = "sine";
-    // Pleasant dual chime
-    osc.frequency.setValueAtTime(784, audioCtx.currentTime); // G5
-    osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime + 0.15); // C6
+    // First bell: G5 (784Hz)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(783.99, t);
+    gain1.gain.setValueAtTime(0.22, t);
+    gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(t);
+    osc1.stop(t + 0.65);
 
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
-
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.5);
+    // Second bell: C6 (1046.5Hz) - harmonious step-in chime
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1046.5, t + 0.18);
+    gain2.gain.setValueAtTime(0.25, t + 0.18);
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(t + 0.18);
+    osc2.stop(t + 1.0);
   } catch (e) {
     console.warn("Audio playback not supported or blocked by browser:", e);
   }
@@ -328,7 +336,7 @@ function playChimeBeep() {
 function startChime() {
   playChimeBeep();
   if (!chimeInterval) {
-    chimeInterval = setInterval(playChimeBeep, 800);
+    chimeInterval = setInterval(playChimeBeep, 1400); // Gentle 1.4s interval
   }
 }
 
@@ -339,7 +347,7 @@ function stopChime() {
   }
 }
 
-// Trigger Alarm Event
+// Trigger Cue Event
 function triggerAlarm(alarm) {
   activeTriggerAlarm = alarm;
   startChime();
@@ -350,16 +358,16 @@ function triggerAlarm(alarm) {
   const notesDisplay = document.getElementById("alertNotesDisplay");
 
   if (timeDisplay) timeDisplay.textContent = alarm.time;
-  if (titleDisplay) titleDisplay.textContent = alarm.title || "Alarm";
-  if (notesDisplay) notesDisplay.textContent = alarm.notes || "No notes provided.";
+  if (titleDisplay) titleDisplay.textContent = alarm.title || "Cue";
+  if (notesDisplay) notesDisplay.textContent = alarm.notes || "No context brief provided.";
 
   if (modal) modal.style.display = "flex";
 
-  // Browser Notification if supported
+  // Browser Notification if permitted
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(`Alarm: ${alarm.title || alarm.time}`, {
-      body: alarm.notes || `It is now ${alarm.time}`,
-      icon: "⏰",
+    new Notification(`OnCue: ${alarm.title || alarm.time}`, {
+      body: alarm.notes || `It is now ${alarm.time}. Step in on cue.`,
+      icon: "🎭",
     });
   }
 }
@@ -377,19 +385,18 @@ function snoozeCurrentAlarm() {
   if (modal) modal.style.display = "none";
 
   if (activeTriggerAlarm) {
-    // Snooze by setting a temporary 5-minute future time or alert
+    // Standby: schedule temporary 5-minute future cue
     const snoozeTime = new Date();
     snoozeTime.setMinutes(snoozeTime.getMinutes() + 5);
     const h = String(snoozeTime.getHours()).padStart(2, "0");
     const m = String(snoozeTime.getMinutes()).padStart(2, "0");
 
-    // Create snooze alarm
     fetch("/api/alarms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         time: `${h}:${m}`,
-        title: `[Snoozed] ${activeTriggerAlarm.title || "Alarm"}`,
+        title: `[Standby] ${activeTriggerAlarm.title || "Cue"}`,
         notes: activeTriggerAlarm.notes,
       }),
     })
@@ -398,7 +405,7 @@ function snoozeCurrentAlarm() {
         alarms.push(newAlarm);
         renderAlarms();
       })
-      .catch((e) => console.error("Failed to snooze:", e));
+      .catch((e) => console.error("Failed to set standby cue:", e));
   }
 
   activeTriggerAlarm = null;

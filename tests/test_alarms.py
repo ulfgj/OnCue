@@ -24,7 +24,8 @@ def client(app):
 def test_index_page(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert b"Alarm Clock" in response.data
+    assert b"OnCue" in response.data
+    assert b"Stay in flow. Step in on cue." in response.data
 
 def test_empty_alarms_list(client):
     response = client.get("/api/alarms")
