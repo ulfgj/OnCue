@@ -250,10 +250,12 @@ function renderAlarms() {
               <span class="alarm-time">${escapeHtml(alarm.time)}</span>
               <span class="alarm-title">${escapeHtml(alarm.title || "Cue")}</span>
             </div>
-            <label class="switch" title="${isPassed ? 'Cue has already passed today' : 'Toggle Cue Active'}">
-              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} ${isPassed ? 'disabled' : ''} onchange="handleToggleAlarm(${alarm.id})">
+            ${isPassed ? '' : `
+            <label class="switch" title="Toggle Cue Active">
+              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} onchange="handleToggleAlarm(${alarm.id})">
               <span class="slider"></span>
             </label>
+            `}
           </div>
 
           <div class="countdown-box">
@@ -305,10 +307,12 @@ function renderAlarms() {
             </span>
           </td>
           <td class="td-toggle">
-            <label class="switch" title="${isPassed ? 'Cue has already passed today' : 'Toggle Cue Active'}">
-              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} ${isPassed ? 'disabled' : ''} onchange="handleToggleAlarm(${alarm.id})">
+            ${isPassed ? '<span class="passed-mark" title="Passed for today">✓</span>' : `
+            <label class="switch" title="Toggle Cue Active">
+              <input type="checkbox" ${alarm.is_enabled ? "checked" : ""} onchange="handleToggleAlarm(${alarm.id})">
               <span class="slider"></span>
             </label>
+            `}
           </td>
           <td class="td-actions">
             <div class="card-actions">
