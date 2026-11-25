@@ -18,6 +18,10 @@ OnCue is a calm, precision web application built with Flask designed around **ep
   - Completed/passed cues are positioned unobtrusively at the bottom.
 - **Context Briefs**:
   - Editable multiline text field preserving line breaks, checklists, and arbitrary formatting.
+- **Dual Presentation Views**:
+  - **Card Grid View**: Spatially distinct cards with prominent countdowns and badges.
+  - **Table / List View**: Compact, row-oriented table showing status, time, context brief, countdown, active switch, and quick actions.
+  - Layout choice is persisted in browser storage (`localStorage`) across sessions.
 - **Audio & Alert Notification**:
   - Gentle, resonant synthesized two-tone theater chime (Web Audio API).
   - Alert modal with "Step In" (Acknowledge) and "Stand by (+5m)" options.
