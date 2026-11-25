@@ -22,6 +22,10 @@ OnCue is a calm, precision web application built with Flask designed around **ep
   - **Card Grid View**: Spatially distinct cards with prominent countdowns and badges.
   - **Table / List View**: Compact, row-oriented table showing status, time, context brief, countdown, active switch, and quick actions.
   - Layout choice is persisted in browser storage (`localStorage`) across sessions.
+- **Settings & Protected Actions**:
+  - **Header Settings Access**: Gear icon (`⚙️`) in top right header opens a modular Settings & Preferences dialog.
+  - **Isolated Danger Zone**: "Clear Today's Slate" is sequestered inside Settings away from everyday controls to avoid accidental trigger.
+  - **Double-Safety Confirmation**: Requires explicit confirmation in a secondary prompt showing the number of affected cues before wiping today's slate.
 - **Audio & Alert Notification**:
   - Gentle, resonant synthesized two-tone theater chime (Web Audio API).
   - Alert modal with "Step In" (Acknowledge) and "Stand by (+5m)" options.
