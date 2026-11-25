@@ -554,7 +554,7 @@ function snoozeCurrentAlarm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         time: `${h}:${m}`,
-        title: `[Standby] ${activeTriggerAlarm.title || "Cue"}`,
+        title: `[Snoozed] ${activeTriggerAlarm.title || "Cue"}`,
         notes: activeTriggerAlarm.notes,
       }),
     })
