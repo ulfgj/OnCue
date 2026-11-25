@@ -548,7 +548,7 @@ function updateTriggerSnoozeDisplay() {
   const displayEl = document.getElementById("triggerSnoozeDisplay");
   const btnEl = document.getElementById("triggerSnoozeBtn");
   if (displayEl) displayEl.textContent = `${triggerSnoozeMinutes} min`;
-  if (btnEl) btnEl.textContent = `⏸ Stand by (+${triggerSnoozeMinutes}m)`;
+  if (btnEl) btnEl.textContent = `💤 Snooze (+${triggerSnoozeMinutes}m)`;
 }
 
 function adjustTriggerSnooze(delta) {
