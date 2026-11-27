@@ -38,6 +38,9 @@ def add_alarm():
     time_str = data.get("time", "")
     title = data.get("title", "")
     notes = data.get("notes", "")
+    sound = data.get("sound", "chime")
+    if sound not in ("chime", "pulse"):
+        sound = "chime"
 
     if not validate_alarm_time(time_str):
         return jsonify({"error": "Invalid time format. Please use HH:MM (24-hour format)."}), 400
@@ -58,6 +61,7 @@ def add_alarm():
         notes=notes,
         lead_minutes=lead_minutes,
         alert_time=alert_time,
+        sound=sound,
     )
     return jsonify(alarm), 201
 
@@ -76,7 +80,6 @@ def edit_alarm(alarm_id: int):
     title = data.get("title", "")
     notes = data.get("notes", "")
     is_enabled = data.get("is_enabled", True)
-
     if not validate_alarm_time(time_str):
         return jsonify({"error": "Invalid time format. Please use HH:MM (24-hour format)."}), 400
 
@@ -84,6 +87,10 @@ def edit_alarm(alarm_id: int):
     existing = get_alarm_by_id(db, alarm_id)
     if not existing:
         return jsonify({"error": "Alarm not found"}), 404
+
+    sound = data.get("sound", existing.get("sound", "chime"))
+    if sound not in ("chime", "pulse"):
+        sound = "chime"
 
     if "lead_minutes" in data:
         lead_minutes = parse_lead_minutes(data.get("lead_minutes"))
@@ -111,6 +118,7 @@ def edit_alarm(alarm_id: int):
         is_enabled=is_enabled,
         lead_minutes=lead_minutes,
         alert_time=alert_time,
+        sound=sound,
     )
     if not alarm:
         return jsonify({"error": "Alarm not found"}), 404

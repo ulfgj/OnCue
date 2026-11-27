@@ -12,6 +12,7 @@ class Alarm:
     time: str
     lead_minutes: int
     alert_time: str
+    sound: str
     notes: str
     is_enabled: bool
     created_at: str
@@ -24,6 +25,7 @@ class Alarm:
             "time": self.time,
             "lead_minutes": int(self.lead_minutes),
             "alert_time": self.alert_time,
+            "sound": getattr(self, "sound", "chime") or "chime",
             "notes": self.notes,
             "is_enabled": bool(self.is_enabled),
             "created_at": str(self.created_at),
@@ -68,12 +70,14 @@ def compute_alert_time(event_time: str, lead_minutes: int) -> Optional[str]:
 def _row_to_alarm_dict(row: sqlite3.Row) -> Dict[str, Any]:
     lead_minutes = int(row["lead_minutes"] or 0)
     alert_time = row["alert_time"] or row["time"]
+    sound = row["sound"] if "sound" in row.keys() and row["sound"] else "chime"
     return Alarm(
         id=row["id"],
         title=row["title"],
         time=row["time"],
         lead_minutes=lead_minutes,
         alert_time=alert_time,
+        sound=sound,
         notes=row["notes"],
         is_enabled=bool(row["is_enabled"]),
         created_at=row["created_at"],
@@ -83,7 +87,7 @@ def _row_to_alarm_dict(row: sqlite3.Row) -> Dict[str, Any]:
 def get_all_alarms(db: sqlite3.Connection) -> List[Dict[str, Any]]:
     cursor = db.execute(
         """
-        SELECT id, title, time, lead_minutes, alert_time, notes, is_enabled, created_at, updated_at
+        SELECT id, title, time, lead_minutes, alert_time, sound, notes, is_enabled, created_at, updated_at
         FROM alarms
         ORDER BY COALESCE(NULLIF(alert_time, ''), time) ASC, time ASC
         """
@@ -94,7 +98,7 @@ def get_all_alarms(db: sqlite3.Connection) -> List[Dict[str, Any]]:
 def get_alarm_by_id(db: sqlite3.Connection, alarm_id: int) -> Optional[Dict[str, Any]]:
     cursor = db.execute(
         """
-        SELECT id, title, time, lead_minutes, alert_time, notes, is_enabled, created_at, updated_at
+        SELECT id, title, time, lead_minutes, alert_time, sound, notes, is_enabled, created_at, updated_at
         FROM alarms
         WHERE id = ?
         """,
@@ -112,9 +116,13 @@ def create_alarm(
     notes: str,
     lead_minutes: int = 0,
     alert_time: Optional[str] = None,
+    sound: str = "chime",
 ) -> Dict[str, Any]:
     time_str = time_str.strip()
     title = title.strip()
+    sound = sound.strip() if sound else "chime"
+    if sound not in ("chime", "pulse"):
+        sound = "chime"
     resolved_alert_time = (
         alert_time.strip()
         if alert_time is not None
@@ -124,10 +132,10 @@ def create_alarm(
         raise ValueError("Lead time places alert before midnight (00:00).")
     cursor = db.execute(
         """
-        INSERT INTO alarms (title, time, lead_minutes, alert_time, notes, is_enabled, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        INSERT INTO alarms (title, time, lead_minutes, alert_time, sound, notes, is_enabled, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
         """,
-        (title, time_str, lead_minutes, resolved_alert_time, notes),
+        (title, time_str, lead_minutes, resolved_alert_time, sound, notes),
     )
     db.commit()
     return get_alarm_by_id(db, cursor.lastrowid)  # type: ignore
@@ -141,9 +149,13 @@ def update_alarm(
     is_enabled: bool,
     lead_minutes: int = 0,
     alert_time: Optional[str] = None,
+    sound: str = "chime",
 ) -> Optional[Dict[str, Any]]:
     time_str = time_str.strip()
     title = title.strip()
+    sound = sound.strip() if sound else "chime"
+    if sound not in ("chime", "pulse"):
+        sound = "chime"
     resolved_alert_time = (
         alert_time.strip()
         if alert_time is not None
@@ -154,10 +166,10 @@ def update_alarm(
     cursor = db.execute(
         """
         UPDATE alarms
-        SET title = ?, time = ?, lead_minutes = ?, alert_time = ?, notes = ?, is_enabled = ?, updated_at = CURRENT_TIMESTAMP
+        SET title = ?, time = ?, lead_minutes = ?, alert_time = ?, sound = ?, notes = ?, is_enabled = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
         """,
-        (title, time_str, lead_minutes, resolved_alert_time, notes, 1 if is_enabled else 0, alarm_id),
+        (title, time_str, lead_minutes, resolved_alert_time, sound, notes, 1 if is_enabled else 0, alarm_id),
     )
     db.commit()
     if cursor.rowcount == 0:

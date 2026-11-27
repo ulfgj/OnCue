@@ -283,7 +283,29 @@ def test_init_db_migrates_legacy_schema():
         assert alarms[0]["time"] == "15:00"
         assert alarms[0]["lead_minutes"] == 0
         assert alarms[0]["alert_time"] == "15:00"
+        assert alarms[0]["sound"] == "chime"
     finally:
         os.close(db_fd)
         os.unlink(db_path)
+
+
+def test_create_and_update_alarm_with_sound(client):
+    # Default sound is chime
+    res1 = client.post("/api/alarms", json={"title": "Default Sound", "time": "08:00"})
+    assert res1.status_code == 201
+    assert res1.get_json()["sound"] == "chime"
+
+    # Explicit sound pulse
+    res2 = client.post("/api/alarms", json={"title": "Pulsing Cue", "time": "09:00", "sound": "pulse"})
+    assert res2.status_code == 201
+    alarm2 = res2.get_json()
+    assert alarm2["sound"] == "pulse"
+
+    # Update to chime
+    res3 = client.put(f"/api/alarms/{alarm2['id']}", json={"title": "Pulsing Cue", "time": "09:00", "sound": "chime"})
+    assert res3.status_code == 200
+    assert res3.get_json()["sound"] == "chime"
+
+
+
 

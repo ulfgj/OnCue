@@ -36,6 +36,7 @@ def init_db(db_path: Optional[str] = None) -> None:
                     time TEXT NOT NULL,
                     lead_minutes INTEGER NOT NULL DEFAULT 0,
                     alert_time TEXT NOT NULL DEFAULT '',
+                    sound TEXT NOT NULL DEFAULT 'chime',
                     notes TEXT NOT NULL DEFAULT '',
                     is_enabled INTEGER NOT NULL DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -52,6 +53,10 @@ def init_db(db_path: Optional[str] = None) -> None:
             if "alert_time" not in columns:
                 conn.execute(
                     "ALTER TABLE alarms ADD COLUMN alert_time TEXT NOT NULL DEFAULT ''"
+                )
+            if "sound" not in columns:
+                conn.execute(
+                    "ALTER TABLE alarms ADD COLUMN sound TEXT NOT NULL DEFAULT 'chime'"
                 )
             conn.execute(
                 "UPDATE alarms SET alert_time = time WHERE alert_time IS NULL OR alert_time = ''"

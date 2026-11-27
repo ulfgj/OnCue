@@ -6,6 +6,10 @@ let activeTriggerAlarm = null;
 let selectedLeadMinutes = null;
 let currentView = localStorage.getItem("oncue_view") || "grid";
 let defaultSnoozeMinutes = parseInt(localStorage.getItem("oncue_default_snooze"), 10) || 5;
+let defaultSound = localStorage.getItem("oncue_default_sound") || localStorage.getItem("oncue_alarm_sound") || "chime";
+if (defaultSound === "heffalumps") defaultSound = "chime";
+let isPreviewPlaying = false;
+let previewTimeout = null;
 let triggerSnoozeMinutes = defaultSnoozeMinutes;
 let lastKnownDay = new Date().getDate();
 const triggeredAlarmIdsThisMinute = new Set();
@@ -14,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initClock();
   initViewSwitcher();
   updateDefaultSnoozeDisplay();
+  initSoundSettings();
   fetchAlarms();
   setInterval(tick, 1000);
 
@@ -115,11 +120,23 @@ function normalizeAlarm(alarm) {
     alarm.alert_time && String(alarm.alert_time).trim()
       ? String(alarm.alert_time).trim()
       : computeAlertTime(alarm.time, leadMinutes) || alarm.time;
+  const sound = alarm.sound === "pulse" ? "pulse" : "chime";
   return {
     ...alarm,
     lead_minutes: leadMinutes,
     alert_time: alertTime,
+    sound: sound,
   };
+}
+
+function getSoundIcon(sound) {
+  if (sound === "pulse") return "📡";
+  return "🔔";
+}
+
+function getSoundTitle(sound) {
+  if (sound === "pulse") return "Pulsating Beacon";
+  return "Theater Chime";
 }
 
 function getRingMetaLabel(alarm) {
@@ -330,6 +347,7 @@ function renderAlarms() {
             <div class="alarm-time-wrapper">
               <span class="alarm-time">${escapeHtml(alarm.time)}</span>
               ${ringMetaLabel ? `<span class="alarm-ring-badge">🔔 ${escapeHtml(ringMetaLabel)}</span>` : ''}
+              <span class="alarm-sound-badge" title="Sound: ${getSoundTitle(alarm.sound)}">${getSoundIcon(alarm.sound)}</span>
               <span class="alarm-title">${escapeHtml(alarm.title || "Cue")}</span>
             </div>
             ${isPassed ? '' : `
@@ -381,7 +399,10 @@ function renderAlarms() {
             ${ringMetaLabel ? `<div class="table-ring-meta">🔔 ${escapeHtml(ringMetaLabel)}</div>` : ''}
           </td>
           <td class="td-cue">
-            <div class="cue-row-title">${escapeHtml(alarm.title || "Cue")}</div>
+            <div class="cue-row-title">
+              <span title="Sound: ${getSoundTitle(alarm.sound)}">${getSoundIcon(alarm.sound)}</span>
+              ${escapeHtml(alarm.title || "Cue")}
+            </div>
             ${hasNotes ? `<div class="cue-row-notes" title="${escapeHtml(alarm.notes)}">${escapeHtml(alarm.notes)}</div>` : '<div class="cue-row-notes" style="font-style: italic;">No context brief</div>'}
           </td>
           <td class="td-countdown">
@@ -418,6 +439,7 @@ function openAlarmModal(alarmId = null) {
   const timeInput = document.getElementById("alarmTime");
   const titleInput = document.getElementById("alarmTitle");
   const notesInput = document.getElementById("alarmNotes");
+  const soundInput = document.getElementById("alarmSound");
   const enabledGroup = document.getElementById("enabledFieldGroup");
   const enabledInput = document.getElementById("alarmEnabled");
 
@@ -432,6 +454,7 @@ function openAlarmModal(alarmId = null) {
     timeInput.value = alarm.time;
     titleInput.value = alarm.title;
     notesInput.value = alarm.notes;
+    if (soundInput) soundInput.value = alarm.sound || "chime";
     enabledInput.checked = alarm.is_enabled;
     enabledGroup.style.display = "block";
     setSelectedLeadMinutes(alarm.lead_minutes);
@@ -444,6 +467,7 @@ function openAlarmModal(alarmId = null) {
     const defH = String(Math.floor(targetMins / 60)).padStart(2, "0");
     const defM = String(targetMins % 60).padStart(2, "0");
     timeInput.value = `${defH}:${defM}`;
+    if (soundInput) soundInput.value = defaultSound;
     enabledGroup.style.display = "none";
     enabledInput.checked = true;
     setSelectedLeadMinutes(0);
@@ -594,6 +618,8 @@ async function handleAlarmSubmit(e) {
   const time = document.getElementById("alarmTime").value;
   const title = document.getElementById("alarmTitle").value;
   const notes = document.getElementById("alarmNotes").value;
+  const soundEl = document.getElementById("alarmSound");
+  const sound = soundEl ? soundEl.value : defaultSound;
   const is_enabled = document.getElementById("alarmEnabled").checked;
   const errorEl = document.getElementById("leadError");
 
@@ -625,6 +651,7 @@ async function handleAlarmSubmit(e) {
           lead_minutes: selectedLeadMinutes,
           title,
           notes,
+          sound,
           is_enabled,
         }),
       });
@@ -645,6 +672,7 @@ async function handleAlarmSubmit(e) {
           lead_minutes: selectedLeadMinutes,
           title,
           notes,
+          sound,
         }),
       });
       if (!res.ok) {
@@ -729,39 +757,44 @@ async function confirmClearSlate() {
   }
 }
 
-// Calm, Resonant Two-Tone Theater Chime via Web Audio API
+// Sound Synthesis via Web Audio API
+function getAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+// 1. Calm, Resonant Two-Tone Theater Chime
 function playChimeBeep() {
   try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === "suspended") {
-      audioCtx.resume();
-    }
-
-    const t = audioCtx.currentTime;
+    const ctx = getAudioContext();
+    const t = ctx.currentTime;
 
     // First bell: G5 (784Hz)
-    const osc1 = audioCtx.createOscillator();
-    const gain1 = audioCtx.createGain();
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
     osc1.type = "sine";
     osc1.frequency.setValueAtTime(783.99, t);
     gain1.gain.setValueAtTime(0.22, t);
     gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
     osc1.connect(gain1);
-    gain1.connect(audioCtx.destination);
+    gain1.connect(ctx.destination);
     osc1.start(t);
     osc1.stop(t + 0.65);
 
     // Second bell: C6 (1046.5Hz) - harmonious step-in chime
-    const osc2 = audioCtx.createOscillator();
-    const gain2 = audioCtx.createGain();
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
     osc2.type = "sine";
     osc2.frequency.setValueAtTime(1046.5, t + 0.18);
     gain2.gain.setValueAtTime(0.25, t + 0.18);
     gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
     osc2.connect(gain2);
-    gain2.connect(audioCtx.destination);
+    gain2.connect(ctx.destination);
     osc2.start(t + 0.18);
     osc2.stop(t + 1.0);
   } catch (e) {
@@ -769,10 +802,74 @@ function playChimeBeep() {
   }
 }
 
-function startChime() {
-  playChimeBeep();
+// 2. Rhythmic Pulsating Beacon (3 smooth pulses with soft harmonic warmth)
+function playPulseBeep() {
+  try {
+    const ctx = getAudioContext();
+    const t = ctx.currentTime;
+
+    // Pulse sequence parameters
+    const pulseCount = 3;
+    const pulseDuration = 0.22;
+    const pulseInterval = 0.32;
+    const baseFreq = 523.25; // C5 warm anchor
+
+    for (let i = 0; i < pulseCount; i++) {
+      const pStart = t + (i * pulseInterval);
+      const pEnd = pStart + pulseDuration;
+
+      // Primary tone (triangle wave for pleasant body)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(baseFreq, pStart);
+      // Subtle pitch lift on each pulse gives a crisp presence
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.04, pEnd);
+
+      // Smooth envelope attack and decay
+      gain.gain.setValueAtTime(0.0001, pStart);
+      gain.gain.linearRampToValueAtTime(0.26, pStart + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, pEnd);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(pStart);
+      osc.stop(pEnd + 0.05);
+
+      // Soft sub harmonic overtone (sine wave) for acoustic depth
+      const overtone = ctx.createOscillator();
+      const overGain = ctx.createGain();
+      overtone.type = "sine";
+      overtone.frequency.setValueAtTime(baseFreq * 1.5, pStart); // G5 5th
+      overGain.gain.setValueAtTime(0.0001, pStart);
+      overGain.gain.linearRampToValueAtTime(0.08, pStart + 0.04);
+      overGain.gain.exponentialRampToValueAtTime(0.0001, pEnd);
+
+      overtone.connect(overGain);
+      overGain.connect(ctx.destination);
+      overtone.start(pStart);
+      overtone.stop(pEnd + 0.05);
+    }
+  } catch (e) {
+    console.warn("Pulse playback error:", e);
+  }
+}
+
+function playSingleSound(soundType) {
+  const sound = soundType || defaultSound;
+  if (sound === "pulse") {
+    playPulseBeep();
+  } else {
+    playChimeBeep();
+  }
+}
+
+function startChime(soundType) {
+  const sound = soundType || (activeTriggerAlarm && activeTriggerAlarm.sound) || defaultSound;
+  playSingleSound(sound);
   if (!chimeInterval) {
-    chimeInterval = setInterval(playChimeBeep, 1400);
+    const loopInterval = sound === "pulse" ? 1300 : 1400;
+    chimeInterval = setInterval(() => playSingleSound(sound), loopInterval);
   }
 }
 
@@ -781,6 +878,71 @@ function stopChime() {
     clearInterval(chimeInterval);
     chimeInterval = null;
   }
+}
+
+// Sound Settings & Preview Controls
+function initSoundSettings() {
+  const selector = document.getElementById("soundSelector");
+  if (selector) {
+    selector.value = defaultSound;
+  }
+}
+
+function changeDefaultSoundPreference(sound) {
+  defaultSound = sound;
+  localStorage.setItem("oncue_default_sound", sound);
+  const selector = document.getElementById("soundSelector");
+  if (selector) {
+    selector.value = sound;
+  }
+}
+
+function previewCurrentSound() {
+  const previewBtn = document.getElementById("previewSoundBtn");
+  const selector = document.getElementById("soundSelector");
+  const sound = selector ? selector.value : defaultSound;
+
+  if (isPreviewPlaying) {
+    if (previewTimeout) clearTimeout(previewTimeout);
+    isPreviewPlaying = false;
+    if (previewBtn) previewBtn.innerHTML = "▶ Preview Sound";
+    return;
+  }
+
+  isPreviewPlaying = true;
+  if (previewBtn) previewBtn.innerHTML = "⏹ Playing...";
+
+  playSingleSound(sound);
+
+  const duration = sound === "pulse" ? 1100 : 1000;
+  previewTimeout = setTimeout(() => {
+    isPreviewPlaying = false;
+    if (previewBtn) previewBtn.innerHTML = "▶ Preview Sound";
+  }, duration);
+}
+
+function previewModalSound() {
+  const previewBtn = document.getElementById("previewCueSoundBtn");
+  const selector = document.getElementById("alarmSound");
+  const sound = selector ? selector.value : defaultSound;
+
+  if (isPreviewPlaying) {
+    if (previewTimeout) clearTimeout(previewTimeout);
+    isPreviewPlaying = false;
+    if (previewBtn) previewBtn.innerHTML = "▶ Preview";
+    return;
+  }
+
+  isPreviewPlaying = true;
+  if (previewBtn) previewBtn.innerHTML = "⏹";
+
+  playSingleSound(sound);
+
+  const duration = sound === "pulse" ? 1100 : 1000;
+  previewTimeout = setTimeout(() => {
+    isPreviewPlaying = false;
+    if (previewBtn) previewBtn.innerHTML = "▶ Preview";
+  }, duration);
 }
 
 // Snooze / Standby Interval Controls (+ / -)
@@ -812,7 +974,7 @@ function triggerAlarm(alarm) {
   activeTriggerAlarm = alarm;
   triggerSnoozeMinutes = defaultSnoozeMinutes;
   updateTriggerSnoozeDisplay();
-  startChime();
+  startChime(alarm.sound);
 
   const ringTime = alarm.alert_time || alarm.time;
   const modal = document.getElementById("triggerModal");
