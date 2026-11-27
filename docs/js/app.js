@@ -4,6 +4,7 @@ let alarms = [];
 let audioCtx = null;
 let chimeInterval = null;
 let activeTriggerAlarm = null;
+let selectedLeadMinutes = null;
 let currentView = localStorage.getItem("oncue_view") || "grid";
 let defaultSnoozeMinutes = parseInt(localStorage.getItem("oncue_default_snooze"), 10) || 5;
 let triggerSnoozeMinutes = defaultSnoozeMinutes;
@@ -23,13 +24,85 @@ document.addEventListener("DOMContentLoaded", () => {
       openAlarmModal();
     });
   }
+
+  const alarmTimeInput = document.getElementById("alarmTime");
+  if (alarmTimeInput) {
+    alarmTimeInput.addEventListener("input", () => updateLeadPreview());
+  }
 });
+
+// Lead Time & Event Helpers
+function computeAlertTime(eventTimeStr, leadMinutes) {
+  if (!eventTimeStr || typeof eventTimeStr !== "string" || !eventTimeStr.includes(":")) {
+    return null;
+  }
+  const [hStr, mStr] = eventTimeStr.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+    return null;
+  }
+  const lead = Number(leadMinutes);
+  if (!Number.isInteger(lead) || lead < 0) {
+    return null;
+  }
+  const totalMins = h * 60 + m - lead;
+  if (totalMins < 0) {
+    return null;
+  }
+  const alertH = String(Math.floor(totalMins / 60)).padStart(2, "0");
+  const alertM = String(totalMins % 60).padStart(2, "0");
+  return `${alertH}:${alertM}`;
+}
+
+function normalizeAlarm(alarm) {
+  const leadMinutes = Number.isFinite(Number(alarm.lead_minutes))
+    ? Math.max(0, Math.trunc(Number(alarm.lead_minutes)))
+    : 0;
+  const alertTime =
+    alarm.alert_time && String(alarm.alert_time).trim()
+      ? String(alarm.alert_time).trim()
+      : computeAlertTime(alarm.time, leadMinutes) || alarm.time;
+  return {
+    ...alarm,
+    lead_minutes: leadMinutes,
+    alert_time: alertTime,
+  };
+}
+
+function getRingMetaLabel(alarm) {
+  const alertTime = alarm.alert_time || alarm.time;
+  if (alertTime === alarm.time) {
+    return "";
+  }
+  const leadMinutes = Number(alarm.lead_minutes) || 0;
+  if (leadMinutes > 0 && computeAlertTime(alarm.time, leadMinutes) === alertTime) {
+    return `Rings ${alertTime} (−${leadMinutes}m)`;
+  }
+  return `Rings ${alertTime} · Snoozed`;
+}
+
+function getEventBufferText(eventTimeStr) {
+  if (!eventTimeStr || !eventTimeStr.includes(":")) return "";
+  const [h, m] = eventTimeStr.split(":").map(Number);
+  const now = new Date();
+  const eventDate = new Date();
+  eventDate.setHours(h, m, 0, 0);
+  const diffMins = Math.round((eventDate - now) / 60000);
+  if (diffMins > 0) {
+    return `🎯 Event at ${eventTimeStr} · in ${diffMins} min`;
+  }
+  if (diffMins === 0) {
+    return `🎯 Event starts now (${eventTimeStr})`;
+  }
+  return `🎯 Event was at ${eventTimeStr} (${Math.abs(diffMins)} min ago)`;
+}
 
 // Persistence Helpers
 function loadAlarms() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    alarms = raw ? JSON.parse(raw) : [];
+    alarms = (raw ? JSON.parse(raw) : []).map(normalizeAlarm);
   } catch (err) {
     console.error("Failed to load cues from localStorage:", err);
     alarms = [];
@@ -142,7 +215,8 @@ function tick() {
   alarms.forEach((alarm) => {
     if (!alarm.is_enabled) return;
 
-    const [aHours, aMins] = alarm.time.split(":").map(Number);
+    const ringTime = alarm.alert_time || alarm.time;
+    const [aHours, aMins] = ringTime.split(":").map(Number);
     if (
       now.getHours() === aHours &&
       now.getMinutes() === aMins &&
@@ -193,11 +267,13 @@ function renderAlarms() {
 
   // Calculate status for each cue strictly today
   const enriched = alarms.map((alarm) => {
-    const { isPassed, diffMs } = getTodayCueStatus(alarm.time);
+    const ringTime = alarm.alert_time || alarm.time;
+    const { isPassed, diffMs } = getTodayCueStatus(ringTime);
 
     if (isPassed) {
       return {
         ...alarm,
+        ringTime,
         isPassed: true,
         diffMs,
         sortGroup: 2,
@@ -208,6 +284,7 @@ function renderAlarms() {
     if (!alarm.is_enabled) {
       return {
         ...alarm,
+        ringTime,
         isPassed: false,
         diffMs,
         sortGroup: 1,
@@ -217,6 +294,7 @@ function renderAlarms() {
 
     return {
       ...alarm,
+      ringTime,
       isPassed: false,
       diffMs,
       sortGroup: 1,
@@ -246,6 +324,7 @@ function renderAlarms() {
       const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000; // < 5 mins
       const isPassed = alarm.sortGroup === 2;
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
+      const ringMetaLabel = getRingMetaLabel(alarm);
 
       return `
         <div class="alarm-card ${!alarm.is_enabled ? 'disabled' : ''} ${isPassed ? 'passed' : ''}" data-id="${alarm.id}">
@@ -253,6 +332,7 @@ function renderAlarms() {
           <div class="alarm-header">
             <div class="alarm-time-wrapper">
               <span class="alarm-time">${escapeHtml(alarm.time)}</span>
+              ${ringMetaLabel ? `<span class="alarm-ring-badge">🔔 ${escapeHtml(ringMetaLabel)}</span>` : ''}
               <span class="alarm-title">${escapeHtml(alarm.title || "Cue")}</span>
             </div>
             <label class="switch" title="${isPassed ? 'Cue has already passed today' : 'Toggle Cue Active'}">
@@ -262,8 +342,8 @@ function renderAlarms() {
           </div>
 
           <div class="countdown-box">
-            <span class="countdown-label">${isPassed ? 'Status' : (alarm.is_enabled ? 'Time to Cue' : 'Status')}</span>
-            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : ''}">
+            <span class="countdown-label">${isPassed ? 'Status' : (alarm.is_enabled ? (ringMetaLabel ? 'Rings in' : 'Time to Cue') : 'Status')}</span>
+            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : (!alarm.is_enabled ? 'paused-val' : '')}">
               ${alarm.statusText}
             </span>
           </div>
@@ -285,6 +365,7 @@ function renderAlarms() {
       const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000;
       const isPassed = alarm.sortGroup === 2;
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
+      const ringMetaLabel = getRingMetaLabel(alarm);
 
       let statusBadge = '<span class="badge badge-info">Active</span>';
       if (isPassed) {
@@ -294,15 +375,18 @@ function renderAlarms() {
       }
 
       return `
-        <tr class="${isPassed ? 'row-passed' : ''}" data-id="${alarm.id}">
+        <tr class="${isPassed ? 'row-passed' : (!alarm.is_enabled ? 'row-disabled' : '')}" data-id="${alarm.id}">
           <td class="td-status">${statusBadge}</td>
-          <td class="td-time">${escapeHtml(alarm.time)}</td>
+          <td class="td-time">
+            <div class="table-event-time">${escapeHtml(alarm.time)}</div>
+            ${ringMetaLabel ? `<div class="table-ring-meta">🔔 ${escapeHtml(ringMetaLabel)}</div>` : ''}
+          </td>
           <td class="td-cue">
             <div class="cue-row-title">${escapeHtml(alarm.title || "Cue")}</div>
             ${hasNotes ? `<div class="cue-row-notes" title="${escapeHtml(alarm.notes)}">${escapeHtml(alarm.notes)}</div>` : '<div class="cue-row-notes" style="font-style: italic;">No context brief</div>'}
           </td>
           <td class="td-countdown">
-            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : ''}">
+            <span class="countdown-val ${isImminent ? 'imminent' : ''} ${isPassed ? 'passed-val' : (!alarm.is_enabled ? 'paused-val' : '')}">
               ${alarm.statusText}
             </span>
           </td>
@@ -339,8 +423,9 @@ function openAlarmModal(alarmId = null) {
   form.reset();
 
   if (alarmId) {
-    const alarm = alarms.find((a) => a.id === alarmId);
-    if (!alarm) return;
+    const found = alarms.find((a) => a.id === alarmId);
+    if (!found) return;
+    const alarm = normalizeAlarm(found);
     modalTitle.textContent = "Edit Cue";
     idInput.value = alarm.id;
     timeInput.value = alarm.time;
@@ -348,17 +433,19 @@ function openAlarmModal(alarmId = null) {
     notesInput.value = alarm.notes;
     enabledInput.checked = alarm.is_enabled;
     enabledGroup.style.display = "block";
+    setSelectedLeadMinutes(alarm.lead_minutes);
   } else {
     modalTitle.textContent = "Schedule Today's Cue";
     idInput.value = "";
-    // Default to next nearest 15 minutes today
+    // Default to now + 30 minutes today (clamped to 23:59)
     const now = new Date();
-    now.setMinutes(now.getMinutes() + 15);
-    const defH = String(now.getHours()).padStart(2, "0");
-    const defM = String(now.getMinutes()).padStart(2, "0");
+    const targetMins = Math.min(now.getHours() * 60 + now.getMinutes() + 30, 23 * 60 + 59);
+    const defH = String(Math.floor(targetMins / 60)).padStart(2, "0");
+    const defM = String(targetMins % 60).padStart(2, "0");
     timeInput.value = `${defH}:${defM}`;
     enabledGroup.style.display = "none";
     enabledInput.checked = true;
+    resetLeadSelection();
   }
 
   modal.style.display = "flex";
@@ -366,6 +453,124 @@ function openAlarmModal(alarmId = null) {
 
 function closeAlarmModal() {
   document.getElementById("alarmModal").style.display = "none";
+}
+
+function resetLeadSelection() {
+  selectedLeadMinutes = null;
+  const hiddenInput = document.getElementById("alarmLeadMinutes");
+  const customInput = document.getElementById("customLeadInput");
+  const errorEl = document.getElementById("leadError");
+  if (hiddenInput) hiddenInput.value = "";
+  if (customInput) customInput.value = "";
+  if (errorEl) {
+    errorEl.textContent = "";
+    errorEl.style.display = "none";
+  }
+  document.querySelectorAll(".btn-lead-preset").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+  updateLeadPreview();
+}
+
+function setSelectedLeadMinutes(val, updateCustomField = true) {
+  const parsed = Number(val);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 720) {
+    return;
+  }
+  selectedLeadMinutes = parsed;
+  const hiddenInput = document.getElementById("alarmLeadMinutes");
+  const customInput = document.getElementById("customLeadInput");
+  const errorEl = document.getElementById("leadError");
+
+  if (hiddenInput) hiddenInput.value = String(parsed);
+  if (updateCustomField && customInput) {
+    customInput.value = String(parsed);
+  }
+  if (errorEl) {
+    errorEl.textContent = "";
+    errorEl.style.display = "none";
+  }
+
+  document.querySelectorAll(".btn-lead-preset").forEach((btn) => {
+    const btnLead = Number(btn.dataset.lead);
+    btn.classList.toggle("active", btnLead === parsed);
+  });
+
+  updateLeadPreview();
+}
+
+function selectLeadPreset(minutes) {
+  setSelectedLeadMinutes(minutes, true);
+}
+
+function adjustCustomLead(delta) {
+  const base = selectedLeadMinutes === null ? 0 : selectedLeadMinutes;
+  const next = Math.max(0, Math.min(720, base + delta));
+  setSelectedLeadMinutes(next, true);
+}
+
+function handleCustomLeadInput(e) {
+  const raw = e.target.value.trim();
+  const errorEl = document.getElementById("leadError");
+  if (raw === "") {
+    selectedLeadMinutes = null;
+    const hiddenInput = document.getElementById("alarmLeadMinutes");
+    if (hiddenInput) hiddenInput.value = "";
+    document.querySelectorAll(".btn-lead-preset").forEach((btn) => btn.classList.remove("active"));
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.style.display = "none";
+    }
+    updateLeadPreview();
+    return;
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 720) {
+    selectedLeadMinutes = null;
+    const hiddenInput = document.getElementById("alarmLeadMinutes");
+    if (hiddenInput) hiddenInput.value = "";
+    document.querySelectorAll(".btn-lead-preset").forEach((btn) => btn.classList.remove("active"));
+    if (errorEl) {
+      errorEl.textContent = "Enter a whole number between 0 and 720 minutes.";
+      errorEl.style.display = "block";
+    }
+    updateLeadPreview();
+    return;
+  }
+  setSelectedLeadMinutes(parsed, false);
+}
+
+function updateLeadPreview() {
+  const previewEl = document.getElementById("leadPreview");
+  const timeInput = document.getElementById("alarmTime");
+  if (!previewEl) return;
+
+  const eventTime = timeInput ? timeInput.value : "";
+  if (selectedLeadMinutes === null) {
+    previewEl.className = "lead-preview neutral";
+    previewEl.textContent = "Choose how far ahead the alarm should ring.";
+    return;
+  }
+
+  if (!eventTime) {
+    previewEl.className = "lead-preview neutral";
+    previewEl.textContent = "Enter an event time above to preview when the alarm rings.";
+    return;
+  }
+
+  const alertTime = computeAlertTime(eventTime, selectedLeadMinutes);
+  if (!alertTime) {
+    previewEl.className = "lead-preview error";
+    previewEl.textContent = `Cannot ring ${selectedLeadMinutes}m before ${eventTime} — that would be before midnight (00:00).`;
+    return;
+  }
+
+  previewEl.className = "lead-preview";
+  if (selectedLeadMinutes === 0) {
+    previewEl.textContent = `Rings at ${alertTime} (at event start time)`;
+  } else {
+    previewEl.textContent = `Rings at ${alertTime} — ${selectedLeadMinutes} min before ${eventTime}`;
+  }
 }
 
 // Form Submission (Add or Edit with LocalStorage)
@@ -376,9 +581,27 @@ function handleAlarmSubmit(e) {
   const title = document.getElementById("alarmTitle").value;
   const notes = document.getElementById("alarmNotes").value;
   const is_enabled = document.getElementById("alarmEnabled").checked;
+  const errorEl = document.getElementById("leadError");
 
   if (!time) {
     alert("Please specify a valid time.");
+    return;
+  }
+
+  if (selectedLeadMinutes === null) {
+    if (errorEl) {
+      errorEl.textContent = "Please choose how far ahead the alarm should ring.";
+      errorEl.style.display = "block";
+    }
+    return;
+  }
+
+  const computedAlert = computeAlertTime(time, selectedLeadMinutes);
+  if (!computedAlert) {
+    if (errorEl) {
+      errorEl.textContent = "Ring ahead lead time cannot place the alert before midnight (00:00).";
+      errorEl.style.display = "block";
+    }
     return;
   }
 
@@ -387,6 +610,8 @@ function handleAlarmSubmit(e) {
     const idx = alarms.findIndex((a) => a.id === Number(id));
     if (idx !== -1) {
       alarms[idx].time = time.trim();
+      alarms[idx].lead_minutes = selectedLeadMinutes;
+      alarms[idx].alert_time = computedAlert;
       alarms[idx].title = title.trim();
       alarms[idx].notes = notes;
       alarms[idx].is_enabled = is_enabled;
@@ -397,6 +622,8 @@ function handleAlarmSubmit(e) {
     const newCue = {
       id: Date.now(),
       time: time.trim(),
+      lead_minutes: selectedLeadMinutes,
+      alert_time: computedAlert,
       title: title.trim(),
       notes: notes,
       is_enabled: true,
@@ -550,12 +777,23 @@ function triggerAlarm(alarm) {
   updateTriggerSnoozeDisplay();
   startChime();
 
+  const ringTime = alarm.alert_time || alarm.time;
   const modal = document.getElementById("triggerModal");
   const timeDisplay = document.getElementById("alertTimeDisplay");
+  const eventMetaDisplay = document.getElementById("alertEventMeta");
   const titleDisplay = document.getElementById("alertTitleDisplay");
   const notesDisplay = document.getElementById("alertNotesDisplay");
 
-  if (timeDisplay) timeDisplay.textContent = alarm.time;
+  if (timeDisplay) timeDisplay.textContent = ringTime;
+  if (eventMetaDisplay) {
+    if (ringTime !== alarm.time) {
+      eventMetaDisplay.textContent = getEventBufferText(alarm.time);
+      eventMetaDisplay.style.display = "inline-block";
+    } else {
+      eventMetaDisplay.textContent = "";
+      eventMetaDisplay.style.display = "none";
+    }
+  }
   if (titleDisplay) titleDisplay.textContent = alarm.title || "Cue";
   if (notesDisplay) notesDisplay.textContent = alarm.notes || "No context brief provided.";
 
@@ -563,8 +801,11 @@ function triggerAlarm(alarm) {
 
   // Browser Notification if permitted
   if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(`OnCue: ${alarm.title || alarm.time}`, {
-      body: alarm.notes || `It is now ${alarm.time}. Step in on cue.`,
+    const eventInfo = ringTime !== alarm.time ? `Event at ${alarm.time}. ` : "";
+    new Notification(`OnCue: ${alarm.title || ringTime}`, {
+      body: alarm.notes
+        ? `${eventInfo}${alarm.notes}`
+        : `${eventInfo}It is now ${ringTime}. Step in on cue.`,
       icon: "🎭",
     });
   }
@@ -584,15 +825,18 @@ function snoozeCurrentAlarm() {
 
   if (activeTriggerAlarm) {
     const cueToUpdate = activeTriggerAlarm;
-    const snoozeTime = new Date();
-    snoozeTime.setMinutes(snoozeTime.getMinutes() + triggerSnoozeMinutes);
-    const h = String(snoozeTime.getHours()).padStart(2, "0");
-    const m = String(snoozeTime.getMinutes()).padStart(2, "0");
+    const now = new Date();
+    const snoozeTotalMins = Math.min(
+      now.getHours() * 60 + now.getMinutes() + triggerSnoozeMinutes,
+      23 * 60 + 59
+    );
+    const h = String(Math.floor(snoozeTotalMins / 60)).padStart(2, "0");
+    const m = String(snoozeTotalMins % 60).padStart(2, "0");
     const newTime = `${h}:${m}`;
 
     const idx = alarms.findIndex((a) => a.id === cueToUpdate.id);
     if (idx !== -1) {
-      alarms[idx].time = newTime;
+      alarms[idx].alert_time = newTime;
       alarms[idx].is_enabled = true;
       alarms[idx].updated_at = new Date().toISOString();
       saveAlarms();

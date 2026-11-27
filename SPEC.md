@@ -8,18 +8,19 @@ OnCue is a calm, precision web application built with Flask designed around **ep
 ## 2. Requirements & Ephemeral Architecture
 - **Ephemeral Daily Slate**:
   - Cues belong strictly to today's schedule.
-  - Active upcoming cues count down live (`HHh MMm SSs`).
+  - Each cue captures an **Event Time** (`time`) and a required **Ring Ahead (Lead Time)** selection (`lead_minutes`, via quick presets `At time`–`60m` or custom stepper/input), computing a same-day `alert_time` with a live preview.
+  - Active upcoming cues count down live (`HHh MMm SSs`) to their `alert_time` ("Rings in" when lead time is set), display **Event Time** as the primary white headline with a subtle amber `Rings HH:MM` badge whenever `alert_time` differs from Event Time, and keep the Context Brief free from scheduling metadata.
   - Cues that have passed today gracefully transition into a dimmed "Completed Today" state rather than rolling over to tomorrow.
   - At midnight (00:00:00), the app automatically starts fresh for the new day.
   - Users can wipe today's slate clean anytime using the "Clear Slate" action.
 - **Dynamic Real-Time Priority**:
-  - Upcoming cues (both active and paused) are kept in chronological, closest-first order so pausing a cue retains its exact position in the timeline.
+  - Upcoming cues (both active and paused) are kept in chronological, closest-first order by `alert_time` so pausing a cue retains its exact position in the timeline.
   - Completed/passed cues are positioned unobtrusively at the bottom.
 - **Context Briefs**:
   - Editable multiline text field preserving line breaks, checklists, and arbitrary formatting.
 - **Dual Presentation Views**:
-  - **Card Grid View**: Spatially distinct cards with prominent countdowns and badges.
-  - **Table / List View**: Compact, row-oriented table showing status, time, context brief, countdown, active switch, and quick actions.
+  - **Card Grid View**: Spatially distinct cards with Event Time as the white headline, subtle amber ring-time badge, and prominent countdowns.
+  - **Table / List View**: Compact, row-oriented table showing status, Event Time (with optional ring-time badge), context brief, countdown, active switch, and quick actions.
   - Layout choice is persisted in browser storage (`localStorage`) across sessions.
 - **Settings & Protected Actions**:
   - **Header Settings Access**: Gear icon (`⚙️`) in top right header opens a modular Settings & Preferences dialog.
@@ -27,7 +28,7 @@ OnCue is a calm, precision web application built with Flask designed around **ep
   - **Double-Safety Confirmation**: Requires explicit confirmation in a secondary prompt showing the number of affected cues before wiping today's slate.
 - **Audio & Alert Notification**:
   - Gentle, resonant synthesized two-tone theater chime (Web Audio API).
-  - Alert modal with "Step In" (Acknowledge) and "Stand by (+5m)" options.
+  - Alert modal with remaining buffer to Event Time, "Dismiss" (Acknowledge), and adjustable "Snooze" options (snoozing shifts `alert_time` while preserving Event Time).
 
 ## 3. Architecture & Tech Stack
 - **Dual Deployment Model**:
@@ -39,8 +40,8 @@ OnCue is a calm, precision web application built with Flask designed around **ep
 ## 4. API Endpoints
 - `GET /` — Serves main web app.
 - `GET /api/alarms` — Return JSON list of cues.
-- `POST /api/alarms` — Create new cue `{ time: "HH:MM", title: "...", notes: "..." }`.
-- `PUT /api/alarms/<id>` — Update cue `{ time, title, notes, is_enabled }`.
+- `POST /api/alarms` — Create new cue `{ time: "HH:MM", lead_minutes?: int, title: "...", notes: "..." }` (computes `alert_time`).
+- `PUT /api/alarms/<id>` — Update cue `{ time, lead_minutes?, alert_time?, title, notes, is_enabled }`.
 - `PATCH /api/alarms/<id>/toggle` — Toggle cue active status.
 - `DELETE /api/alarms/<id>` — Remove single cue.
 - `DELETE /api/alarms` — Clear today's entire slate.

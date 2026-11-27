@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import tempfile
 import pytest
 from app import create_app
@@ -146,4 +147,143 @@ def test_multiline_notes_preservation(client):
     get_res = client.get(f"/api/alarms/{alarm['id']}")
     assert get_res.status_code == 200
     assert get_res.get_json()["notes"] == complex_notes
+
+
+def test_create_alarm_with_lead_time(client):
+    res = client.post(
+        "/api/alarms",
+        json={"title": "Taekwondo", "time": "18:00", "lead_minutes": 30, "notes": "Pack dobok"},
+    )
+    assert res.status_code == 201
+    data = res.get_json()
+    assert data["time"] == "18:00"
+    assert data["lead_minutes"] == 30
+    assert data["alert_time"] == "17:30"
+    assert data["notes"] == "Pack dobok"
+
+
+def test_create_alarm_default_lead_time(client):
+    res = client.post(
+        "/api/alarms",
+        json={"title": "Standup", "time": "09:15"},
+    )
+    assert res.status_code == 201
+    data = res.get_json()
+    assert data["time"] == "09:15"
+    assert data["lead_minutes"] == 0
+    assert data["alert_time"] == "09:15"
+
+
+def test_create_alarm_invalid_lead_time_and_midnight_overflow(client):
+    invalid_payloads = [
+        {"time": "18:00", "lead_minutes": -5},
+        {"time": "18:00", "lead_minutes": True},
+        {"time": "18:00", "lead_minutes": "abc"},
+        {"time": "18:00", "lead_minutes": 1440},
+        {"time": "00:15", "lead_minutes": 30},
+    ]
+    for payload in invalid_payloads:
+        res = client.post("/api/alarms", json=payload)
+        assert res.status_code == 400
+        assert "error" in res.get_json()
+
+
+def test_update_alarm_recalculates_alert_time(client):
+    create_res = client.post(
+        "/api/alarms",
+        json={"title": "Taekwondo", "time": "18:00", "lead_minutes": 15},
+    )
+    alarm_id = create_res.get_json()["id"]
+    assert create_res.get_json()["alert_time"] == "17:45"
+
+    update_res = client.put(
+        f"/api/alarms/{alarm_id}",
+        json={"title": "Taekwondo", "time": "19:00", "lead_minutes": 45, "notes": "", "is_enabled": True},
+    )
+    assert update_res.status_code == 200
+    updated = update_res.get_json()
+    assert updated["time"] == "19:00"
+    assert updated["lead_minutes"] == 45
+    assert updated["alert_time"] == "18:15"
+
+    # Updating only time preserves existing lead_minutes and recalculates alert_time
+    update_time_only = client.put(
+        f"/api/alarms/{alarm_id}",
+        json={"title": "Taekwondo", "time": "20:00", "notes": "", "is_enabled": True},
+    )
+    assert update_time_only.status_code == 200
+    assert update_time_only.get_json()["lead_minutes"] == 45
+    assert update_time_only.get_json()["alert_time"] == "19:15"
+
+
+def test_snooze_preserves_event_time(client):
+    create_res = client.post(
+        "/api/alarms",
+        json={"title": "Taekwondo", "time": "18:00", "lead_minutes": 30},
+    )
+    alarm_id = create_res.get_json()["id"]
+
+    snooze_res = client.put(
+        f"/api/alarms/{alarm_id}",
+        json={
+            "title": "Taekwondo",
+            "time": "18:00",
+            "lead_minutes": 30,
+            "alert_time": "17:35",
+            "notes": "",
+            "is_enabled": True,
+        },
+    )
+    assert snooze_res.status_code == 200
+    data = snooze_res.get_json()
+    assert data["time"] == "18:00"
+    assert data["lead_minutes"] == 30
+    assert data["alert_time"] == "17:35"
+
+
+def test_alarms_sorted_by_alert_time(client):
+    client.post("/api/alarms", json={"title": "Later Event Earlier Alert", "time": "10:15", "lead_minutes": 30})
+    client.post("/api/alarms", json={"title": "Earlier Event No Lead", "time": "10:00", "lead_minutes": 0})
+
+    list_res = client.get("/api/alarms")
+    assert list_res.status_code == 200
+    alarms = list_res.get_json()["alarms"]
+    assert [a["alert_time"] for a in alarms] == ["09:45", "10:00"]
+
+
+def test_init_db_migrates_legacy_schema():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        conn = sqlite3.connect(db_path)
+        with conn:
+            conn.execute("""
+                CREATE TABLE alarms (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL DEFAULT '',
+                    time TEXT NOT NULL,
+                    notes TEXT NOT NULL DEFAULT '',
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute(
+                "INSERT INTO alarms (title, time, notes, is_enabled) VALUES (?, ?, ?, ?)",
+                ("Legacy Cue", "15:00", "Old note", 1),
+            )
+        conn.close()
+
+        init_db(db_path)
+        migrated_app = create_app({"TESTING": True, "DATABASE_PATH": db_path})
+        res = migrated_app.test_client().get("/api/alarms")
+        assert res.status_code == 200
+        alarms = res.get_json()["alarms"]
+        assert len(alarms) == 1
+        assert alarms[0]["title"] == "Legacy Cue"
+        assert alarms[0]["time"] == "15:00"
+        assert alarms[0]["lead_minutes"] == 0
+        assert alarms[0]["alert_time"] == "15:00"
+    finally:
+        os.close(db_fd)
+        os.unlink(db_path)
 

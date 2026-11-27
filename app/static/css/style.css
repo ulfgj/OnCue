@@ -210,6 +210,20 @@ body {
   color: #64748b;
 }
 
+/* Table Row: Paused / Disabled */
+.cues-table tr.row-disabled {
+  opacity: 0.72;
+  filter: grayscale(0.5);
+  background-color: rgba(9, 13, 22, 0.2);
+}
+
+.cues-table tr.row-disabled .td-time,
+.cues-table tr.row-disabled .table-ring-meta,
+.cues-table tr.row-disabled .cue-row-title,
+.cues-table tr.row-disabled .cue-row-notes {
+  color: #94a3b8;
+}
+
 /* Table Cells */
 .cues-table td {
   padding: 14px 16px;
@@ -382,6 +396,12 @@ body {
   font-size: 1rem;
 }
 
+.countdown-val.paused-val,
+.td-countdown .countdown-val.paused-val {
+  color: #94a3b8;
+  font-size: 1rem;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -416,8 +436,22 @@ body {
 }
 
 .alarm-card.disabled {
-  opacity: 0.45;
-  filter: grayscale(0.4);
+  opacity: 0.72;
+  filter: grayscale(0.5);
+  background-color: rgba(19, 27, 46, 0.78);
+  border-color: #1e293b;
+}
+
+.alarm-card.disabled .alarm-time,
+.alarm-card.disabled .alarm-title,
+.alarm-card.disabled .alarm-notes {
+  color: #94a3b8;
+}
+
+.alarm-card.disabled .alarm-ring-badge {
+  color: #94a3b8;
+  border-color: #475569;
+  background-color: rgba(51, 65, 85, 0.35);
 }
 
 .alarm-header {
@@ -657,6 +691,8 @@ input:checked + .slider:before {
   border-radius: var(--card-radius);
   width: 100%;
   max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
   padding: 26px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   animation: slide-up 0.2s ease-out;
@@ -1057,4 +1093,158 @@ input:checked + .slider:before {
   padding: 0 12px;
   min-width: 70px;
   text-align: center;
+}
+
+/* Ring Ahead / Lead Time Controls */
+.lead-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.btn-lead-preset {
+  background-color: #090d16;
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-lead-preset:hover {
+  border-color: #475569;
+  color: #f8fafc;
+}
+
+.btn-lead-preset.active {
+  background-color: rgba(245, 158, 11, 0.16);
+  border-color: var(--accent-cue);
+  color: var(--accent-cue);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+
+.lead-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.lead-custom-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.lead-number-input {
+  width: 68px;
+  background: transparent;
+  border: none;
+  color: var(--accent-cue);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.lead-number-input:focus {
+  outline: none;
+}
+
+.lead-number-input::-webkit-inner-spin-button,
+.lead-number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.lead-preview {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 600;
+  background-color: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--accent-cyan);
+}
+
+.lead-preview.neutral {
+  background-color: rgba(9, 13, 22, 0.55);
+  border-color: var(--surface-border);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.lead-preview.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-family: var(--font-sans);
+}
+
+.form-error {
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+/* Subtle Yellow Ring Time Meta Badges */
+.alarm-ring-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  width: fit-content;
+}
+
+.alarm-card.passed .alarm-ring-badge {
+  color: #94a3b8;
+  border-color: #334155;
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+.table-event-time {
+  line-height: 1.15;
+}
+
+.table-ring-meta {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-top: 3px;
+}
+
+.cues-table tr.row-passed .table-ring-meta {
+  color: #64748b;
+  text-decoration: none;
+}
+
+.alert-event-meta {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background-color: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--accent-cue);
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
 }

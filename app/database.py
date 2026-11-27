@@ -24,19 +24,37 @@ def close_db(e=None) -> None:
         db.close()
 
 def init_db(db_path: Optional[str] = None) -> None:
-    """Initialize database tables."""
+    """Initialize database tables and apply idempotent schema migrations."""
     path = db_path or os.environ.get("DATABASE_PATH") or "alarm.db"
     conn = sqlite3.connect(path)
-    with conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS alarms (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL DEFAULT '',
-                time TEXT NOT NULL,
-                notes TEXT NOT NULL DEFAULT '',
-                is_enabled INTEGER NOT NULL DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    try:
+        with conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS alarms (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL DEFAULT '',
+                    time TEXT NOT NULL,
+                    lead_minutes INTEGER NOT NULL DEFAULT 0,
+                    alert_time TEXT NOT NULL DEFAULT '',
+                    notes TEXT NOT NULL DEFAULT '',
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(alarms)").fetchall()
+            }
+            if "lead_minutes" not in columns:
+                conn.execute(
+                    "ALTER TABLE alarms ADD COLUMN lead_minutes INTEGER NOT NULL DEFAULT 0"
+                )
+            if "alert_time" not in columns:
+                conn.execute(
+                    "ALTER TABLE alarms ADD COLUMN alert_time TEXT NOT NULL DEFAULT ''"
+                )
+            conn.execute(
+                "UPDATE alarms SET alert_time = time WHERE alert_time IS NULL OR alert_time = ''"
             )
-        """)
-    conn.close()
+    finally:
+        conn.close()

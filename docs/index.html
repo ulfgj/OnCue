@@ -99,9 +99,33 @@
         <input type="hidden" id="alarmId" value="">
 
         <div class="form-group time-group">
-          <label for="alarmTime">Cue Time (Today, 24h format) *</label>
+          <label for="alarmTime">Event Time (Today, 24h format) *</label>
           <input type="time" id="alarmTime" required class="form-input time-input">
-          <small class="form-help">Strictly for today. Completed cues retire peacefully at the end of the day.</small>
+          <small class="form-help">When the event happens today. Completed cues retire peacefully at midnight.</small>
+        </div>
+
+        <div class="form-group lead-time-group">
+          <label>Ring Ahead (Lead Time) *</label>
+          <input type="hidden" id="alarmLeadMinutes" value="">
+          <div class="lead-presets" role="group" aria-label="Ring ahead presets">
+            <button type="button" class="btn-lead-preset" data-lead="0" onclick="selectLeadPreset(0)">At time</button>
+            <button type="button" class="btn-lead-preset" data-lead="5" onclick="selectLeadPreset(5)">5m</button>
+            <button type="button" class="btn-lead-preset" data-lead="10" onclick="selectLeadPreset(10)">10m</button>
+            <button type="button" class="btn-lead-preset" data-lead="15" onclick="selectLeadPreset(15)">15m</button>
+            <button type="button" class="btn-lead-preset" data-lead="30" onclick="selectLeadPreset(30)">30m</button>
+            <button type="button" class="btn-lead-preset" data-lead="45" onclick="selectLeadPreset(45)">45m</button>
+            <button type="button" class="btn-lead-preset" data-lead="60" onclick="selectLeadPreset(60)">60m</button>
+          </div>
+          <div class="lead-custom-row">
+            <span class="lead-custom-label">Custom:</span>
+            <div class="stepper-control">
+              <button type="button" class="btn-stepper" onclick="adjustCustomLead(-5)" title="Decrease lead time by 5 min">–</button>
+              <input type="number" id="customLeadInput" min="0" max="720" step="1" placeholder="min" class="lead-number-input" aria-label="Custom ring ahead minutes" oninput="handleCustomLeadInput(event)">
+              <button type="button" class="btn-stepper" onclick="adjustCustomLead(5)" title="Increase lead time by 5 min">＋</button>
+            </div>
+          </div>
+          <div id="leadPreview" class="lead-preview neutral">Choose how far ahead the alarm should ring.</div>
+          <div id="leadError" class="form-error" style="display: none;"></div>
         </div>
 
         <div class="form-group">
@@ -137,6 +161,7 @@
       <div class="alert-badge">STEP IN</div>
       <h2 class="alert-heading">You're On Cue</h2>
       <div id="alertTimeDisplay" class="alert-time">00:00</div>
+      <div id="alertEventMeta" class="alert-event-meta" style="display: none;"></div>
       <h3 id="alertTitleDisplay" class="alert-title">Cue Title</h3>
       <div id="alertNotesDisplay" class="alert-notes"></div>
 
