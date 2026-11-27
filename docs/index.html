@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnCue — Stay in flow. Step in on cue.</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header with Live Clock & Ephemeral Actions -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title"><span class="brand-cue">On</span><span class="brand-highlight">Cue</span></h1>
+        <p class="app-subtitle">Today's ephemeral cue sheet • Tomorrow is a fresh slate</p>
+      </div>
+
+      <div class="clock-display" id="clockDisplay">
+        <div class="digital-time" id="digitalTime">--:--:--</div>
+        <div class="digital-date" id="digitalDate">Loading date...</div>
+      </div>
+
+      <div class="header-actions">
+        <button id="openAddModalBtn" class="btn btn-primary">
+          <span class="btn-icon">＋</span> New Cue
+        </button>
+        <button id="openSettingsBtn" class="btn btn-icon-only" title="Settings" onclick="openSettingsModal()">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <div class="list-controls">
+        <div class="status-summary">
+          <span id="activeCountBadge" class="badge badge-info">0 active today</span>
+          <span class="sort-indicator">Arranged by: <strong>Next on Cue</strong></span>
+        </div>
+
+        <div class="view-switcher" role="group" aria-label="View layout">
+          <button id="viewGridBtn" class="btn-toggle active" title="Grid / Card view" onclick="switchView('grid')">
+            <span class="view-icon">▦</span> Cards
+          </button>
+          <button id="viewTableBtn" class="btn-toggle" title="Table / List view" onclick="switchView('table')">
+            <span class="view-icon">☰</span> Table
+          </button>
+        </div>
+      </div>
+
+      <!-- Cues Container (Grid or Table) -->
+      <div id="alarmsList" class="alarms-grid">
+        <!-- Rendered dynamically via JS -->
+      </div>
+
+      <div id="alarmsTableContainer" class="table-container" style="display: none;">
+        <table class="cues-table">
+          <thead>
+            <tr>
+              <th class="th-status">Status</th>
+              <th class="th-time">Time</th>
+              <th class="th-cue">Cue & Context Brief</th>
+              <th class="th-countdown">Time to Cue</th>
+              <th class="th-toggle">Active</th>
+              <th class="th-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="alarmsTableBody">
+            <!-- Rendered dynamically via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-icon">🎭</div>
+        <h3>Today's slate is clear</h3>
+        <p>Set today's cues when you're ready. Ephemeral by design—no lingering alarms or tomorrow clutter.</p>
+        <button class="btn btn-primary" onclick="openAlarmModal()">Schedule Today's First Cue</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add / Edit Modal -->
+  <div id="alarmModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Schedule Today's Cue</h2>
+        <div class="modal-header-actions">
+          <button type="submit" form="alarmForm" class="btn btn-primary btn-header-save">Save Cue</button>
+          <button type="button" class="modal-close" onclick="closeAlarmModal()">&times;</button>
+        </div>
+      </div>
+
+      <form id="alarmForm" onsubmit="handleAlarmSubmit(event)">
+        <input type="hidden" id="alarmId" value="">
+
+        <div class="form-group time-group">
+          <label for="alarmTime">Cue Time (Today, 24h format) *</label>
+          <input type="time" id="alarmTime" required class="form-input time-input">
+          <small class="form-help">Strictly for today. Completed cues retire peacefully at the end of the day.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="alarmTitle">Cue Title / Scene</label>
+          <input type="text" id="alarmTitle" placeholder="e.g. Design Sync, Deep Work Block, Wrap Up" class="form-input" maxlength="100">
+        </div>
+
+        <div class="form-group">
+          <label for="alarmNotes">Cue Brief / Context (Multiline)</label>
+          <textarea id="alarmNotes" rows="5" class="form-input multiline-input" placeholder="Add arbitrary information, tasks, checklist, URLs, or notes you'll need when you step in..."></textarea>
+          <small class="form-help">Line breaks, checklists, and formatted spacing are preserved.</small>
+        </div>
+
+        <div class="form-group checkbox-group" id="enabledFieldGroup" style="display: none;">
+          <label class="toggle-label">
+            <input type="checkbox" id="alarmEnabled" checked>
+            <span class="toggle-text">Cue is active</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeAlarmModal()">Cancel</button>
+          <button type="submit" id="saveAlarmBtn" class="btn btn-primary btn-footer-save">Save Cue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cue Trigger Modal (Theater Chime + Alert) -->
+  <div id="triggerModal" class="modal-backdrop alert-backdrop" style="display: none;">
+    <div class="modal-card alert-card">
+      <div class="cue-pulsing-icon">🎭</div>
+      <div class="alert-badge">STEP IN</div>
+      <h2 class="alert-heading">You're On Cue</h2>
+      <div id="alertTimeDisplay" class="alert-time">00:00</div>
+      <h3 id="alertTitleDisplay" class="alert-title">Cue Title</h3>
+      <div id="alertNotesDisplay" class="alert-notes"></div>
+
+      <div class="snooze-control-wrapper">
+        <label class="snooze-control-label">Snooze Duration:</label>
+        <div class="stepper-control">
+          <button type="button" class="btn-stepper" onclick="adjustTriggerSnooze(-5)" title="Decrease by 5 min">–</button>
+          <span id="triggerSnoozeDisplay" class="stepper-value">5 min</span>
+          <button type="button" class="btn-stepper" onclick="adjustTriggerSnooze(5)" title="Increase by 5 min">＋</button>
+        </div>
+      </div>
+
+      <div class="alert-actions">
+        <button class="btn btn-step-in" onclick="dismissCurrentAlarm()">✓ Dismiss</button>
+        <button id="triggerSnoozeBtn" class="btn btn-standby" onclick="snoozeCurrentAlarm()">💤 Snooze (+5m)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card settings-modal-card">
+      <div class="modal-header">
+        <h2>⚙️ Settings & Preferences</h2>
+        <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="settings-section">
+          <h3 class="settings-section-title">About OnCue</h3>
+          <p class="settings-desc">Ephemeral day-bound cue scheduler. Designed to keep you in flow without morning-after alarm clutter.</p>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-title">Default Snooze Duration</h3>
+          <p class="settings-desc">Set your preferred default snooze interval when an alarm rings (5 min increments).</p>
+          <div class="stepper-control" style="margin-top: 10px;">
+            <button type="button" class="btn-stepper" onclick="adjustDefaultSnooze(-5)" title="Decrease default by 5 min">–</button>
+            <span id="defaultSnoozeDisplay" class="stepper-value">5 min</span>
+            <button type="button" class="btn-stepper" onclick="adjustDefaultSnooze(5)" title="Increase default by 5 min">＋</button>
+          </div>
+        </div>
+
+        <div class="settings-section settings-danger-section">
+          <h3 class="settings-section-title danger-title"><span class="danger-icon">⚠️</span> Danger Zone</h3>
+          <p class="settings-desc">Permanently wipe all scheduled cues for today and return to a blank canvas.</p>
+          <div style="margin-top: 12px;">
+            <button id="settingsClearSlateBtn" class="btn btn-danger-outline" onclick="openClearSlateModal()">
+              🧹 Clear Today's Slate
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 24px;">
+        <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Slate Confirmation Modal -->
+  <div id="clearSlateModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card danger-modal-card">
+      <div class="modal-header">
+        <h2 style="color: #f87171;">⚠️ Clear Today's Slate?</h2>
+        <button class="modal-close" onclick="closeClearSlateModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>You are about to erase <strong id="clearSlateCount">0 cues</strong> from today's schedule.</p>
+        <p style="margin-top: 8px; color: var(--text-muted); font-size: 0.875rem;">This cannot be undone. Active cues will stop counting down and will not sound.</p>
+      </div>
+      <div class="modal-footer" style="margin-top: 24px;">
+        <button type="button" class="btn btn-secondary" onclick="closeClearSlateModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="confirmClearSlate()">Yes, Clear Entire Slate</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

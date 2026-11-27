@@ -31,9 +31,11 @@ OnCue is a calm, precision web application built with Flask designed around **ep
   - Alert modal with "Step In" (Acknowledge) and "Stand by (+5m)" options.
 
 ## 3. Architecture & Tech Stack
-- **Backend**: Python 3.13, Flask, SQLite (`sqlite3`).
+- **Dual Deployment Model**:
+  - **Static / GitHub Pages Mode (`docs/`)**: Fully functional client-side app hosted on GitHub Pages, utilizing `localStorage` persistence, Web Audio API, and zero backend requirement.
+  - **Server Mode (Flask)**: Python 3.13, Flask, SQLite (`sqlite3`) for local development or custom cloud instances.
 - **Frontend**: Vanilla JavaScript (ES6+), modern CSS3, HTML5, Web Audio API.
-- **Testing**: `pytest`.
+- **Testing**: `pytest` for backend API and endpoints.
 
 ## 4. API Endpoints
 - `GET /` — Serves main web app.
