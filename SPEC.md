@@ -12,9 +12,8 @@ OnCue is a calm, precision web application built with Flask designed around **ep
   - Cues that have passed today gracefully transition into a dimmed "Completed Today" state rather than rolling over to tomorrow.
   - At midnight (00:00:00), the app automatically starts fresh for the new day.
   - Users can wipe today's slate clean anytime using the "Clear Slate" action.
-- **Dynamic Real-Time Priority ("Next on Cue")**:
-  - Upcoming active cues are automatically kept in closest-first order.
-  - Inactive/paused cues appear next.
+- **Dynamic Real-Time Priority**:
+  - Upcoming cues (both active and paused) are kept in chronological, closest-first order so pausing a cue retains its exact position in the timeline.
   - Completed/passed cues are positioned unobtrusively at the bottom.
 - **Context Briefs**:
   - Editable multiline text field preserving line breaks, checklists, and arbitrary formatting.

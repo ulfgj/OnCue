@@ -195,18 +195,8 @@ body {
   background-color: var(--surface-hover);
 }
 
-/* Table Row Priority: Closest */
+/* Table Row Priority: Closest (Deprecated - kept clean) */
 .cues-table tr.row-closest {
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
-  border-left: 3px solid var(--accent-cue);
-}
-
-.cues-table tr.row-closest .td-time {
-  color: var(--accent-cue);
-}
-
-.cues-table tr.row-closest .td-countdown .countdown-val {
-  color: var(--accent-cue);
 }
 
 /* Table Row: Passed */
@@ -337,15 +327,8 @@ body {
   box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.4);
 }
 
-/* Priority Card: Next on Cue */
+/* Priority Card: Next on Cue (Deprecated - kept clean) */
 .alarm-card.closest {
-  border-color: rgba(245, 158, 11, 0.6);
-  background: linear-gradient(180deg, rgba(245, 158, 11, 0.04) 0%, var(--surface-color) 100%);
-  box-shadow: 0 0 25px var(--accent-cue-glow);
-}
-
-.alarm-card.closest .closest-ribbon {
-  display: inline-flex;
 }
 
 /* Ephemeral Passed / Completed State */

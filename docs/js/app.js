@@ -193,10 +193,6 @@ function renderAlarms() {
 
   // Calculate status for each cue strictly today
   const enriched = alarms.map((alarm) => {
-    if (!alarm.is_enabled) {
-      return { ...alarm, isPassed: false, diffMs: Infinity, sortGroup: 2, statusText: "Paused" };
-    }
-
     const { isPassed, diffMs } = getTodayCueStatus(alarm.time);
 
     if (isPassed) {
@@ -204,8 +200,18 @@ function renderAlarms() {
         ...alarm,
         isPassed: true,
         diffMs,
-        sortGroup: 3,
+        sortGroup: 2,
         statusText: "Passed today",
+      };
+    }
+
+    if (!alarm.is_enabled) {
+      return {
+        ...alarm,
+        isPassed: false,
+        diffMs,
+        sortGroup: 1,
+        statusText: "Paused",
       };
     }
 
@@ -219,9 +225,8 @@ function renderAlarms() {
   });
 
   // Sort groups:
-  // Group 1: Upcoming active (ascending by remaining diffMs)
-  // Group 2: Paused/Inactive
-  // Group 3: Passed today (descending)
+  // Group 1: Today's upcoming cues (both active & paused, ascending by scheduled time / diffMs)
+  // Group 2: Passed today (descending)
   enriched.sort((a, b) => {
     if (a.sortGroup !== b.sortGroup) {
       return a.sortGroup - b.sortGroup;
@@ -229,27 +234,21 @@ function renderAlarms() {
     if (a.sortGroup === 1) {
       return a.diffMs - b.diffMs;
     }
-    if (a.sortGroup === 3) {
+    if (a.sortGroup === 2) {
       return b.diffMs - a.diffMs;
     }
     return 0;
   });
 
-  // Identify next upcoming cue
-  const nextCue = enriched.find(a => a.sortGroup === 1);
-  const closestId = nextCue ? nextCue.id : null;
-
   // 1. Render Grid View
   grid.innerHTML = enriched
     .map((alarm) => {
-      const isClosest = alarm.id === closestId;
       const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000; // < 5 mins
-      const isPassed = alarm.sortGroup === 3;
+      const isPassed = alarm.sortGroup === 2;
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
 
       return `
-        <div class="alarm-card ${isClosest ? 'closest' : ''} ${!alarm.is_enabled ? 'disabled' : ''} ${isPassed ? 'passed' : ''}" data-id="${alarm.id}">
-          ${isClosest ? '<span class="closest-ribbon">⭐ Next on Cue</span>' : ''}
+        <div class="alarm-card ${!alarm.is_enabled ? 'disabled' : ''} ${isPassed ? 'passed' : ''}" data-id="${alarm.id}">
           ${isPassed ? '<span class="passed-ribbon">✓ Completed Today</span>' : ''}
           <div class="alarm-header">
             <div class="alarm-time-wrapper">
@@ -283,22 +282,19 @@ function renderAlarms() {
   // 2. Render Table View
   tableBody.innerHTML = enriched
     .map((alarm) => {
-      const isClosest = alarm.id === closestId;
       const isImminent = alarm.sortGroup === 1 && alarm.diffMs < 5 * 60 * 1000;
-      const isPassed = alarm.sortGroup === 3;
+      const isPassed = alarm.sortGroup === 2;
       const hasNotes = alarm.notes && alarm.notes.trim().length > 0;
 
       let statusBadge = '<span class="badge badge-info">Active</span>';
-      if (isClosest) {
-        statusBadge = '<span class="closest-ribbon" style="margin-bottom: 0;">⭐ Next</span>';
-      } else if (isPassed) {
+      if (isPassed) {
         statusBadge = '<span class="passed-ribbon" style="margin-bottom: 0;">✓ Done</span>';
       } else if (!alarm.is_enabled) {
         statusBadge = '<span class="badge" style="background:#334155; color:#94a3b8;">Paused</span>';
       }
 
       return `
-        <tr class="${isClosest ? 'row-closest' : ''} ${isPassed ? 'row-passed' : ''}" data-id="${alarm.id}">
+        <tr class="${isPassed ? 'row-passed' : ''}" data-id="${alarm.id}">
           <td class="td-status">${statusBadge}</td>
           <td class="td-time">${escapeHtml(alarm.time)}</td>
           <td class="td-cue">
