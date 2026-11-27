@@ -100,7 +100,15 @@
 
         <div class="form-group time-group">
           <label for="alarmTime">Event Time (Today, 24h format) *</label>
-          <input type="time" id="alarmTime" required class="form-input time-input">
+          <div class="time-input-wrapper">
+            <input type="time" id="alarmTime" required class="form-input time-input">
+            <button type="button" class="time-picker-btn" onclick="openTimePicker()" aria-label="Open time picker" title="Pick time">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </button>
+          </div>
           <small class="form-help">When the event happens today. Completed cues retire peacefully at midnight.</small>
         </div>
 

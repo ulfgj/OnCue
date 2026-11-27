@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-color: #090d16;
   --surface-color: #131b2e;
   --surface-border: #1e293b;
@@ -788,12 +789,54 @@ input:checked + .slider:before {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
 }
 
+.time-input-wrapper {
+  position: relative;
+}
+
 .time-input {
+  color-scheme: dark;
   font-family: var(--font-mono);
   font-size: 1.6rem;
   font-weight: 700;
   text-align: center;
   color: var(--accent-cue);
+  padding-left: 48px;
+  padding-right: 48px;
+}
+
+.time-input::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+
+.time-picker-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.time-picker-btn:hover {
+  color: var(--accent-cue);
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.time-picker-btn:focus-visible {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
 }
 
 .multiline-input {

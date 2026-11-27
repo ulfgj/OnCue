@@ -8,7 +8,7 @@ OnCue is a calm, precision web application built with Flask designed around **ep
 ## 2. Requirements & Ephemeral Architecture
 - **Ephemeral Daily Slate**:
   - Cues belong strictly to today's schedule.
-  - Each cue captures an **Event Time** (`time`) and a required **Ring Ahead (Lead Time)** selection (`lead_minutes`, via quick presets `At time`–`60m` or custom stepper/input), computing a same-day `alert_time` with a live preview.
+  - Each cue captures an **Event Time** (`time`) and a **Ring Ahead (Lead Time)** setting (`lead_minutes`, defaulting to `At time` / `0m` and adjustable via quick presets `5m`–`60m` or a custom stepper/input), computing a same-day `alert_time` with a live preview.
   - Active upcoming cues count down live (`HHh MMm SSs`) to their `alert_time` ("Rings in" when lead time is set), display **Event Time** as the primary white headline with a subtle amber `Rings HH:MM` badge whenever `alert_time` differs from Event Time, and keep the Context Brief free from scheduling metadata.
   - Cues that have passed today gracefully transition into a dimmed "Completed Today" state rather than rolling over to tomorrow.
   - At midnight (00:00:00), the app automatically starts fresh for the new day.

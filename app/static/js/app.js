@@ -446,7 +446,7 @@ function openAlarmModal(alarmId = null) {
     timeInput.value = `${defH}:${defM}`;
     enabledGroup.style.display = "none";
     enabledInput.checked = true;
-    resetLeadSelection();
+    setSelectedLeadMinutes(0);
   }
 
   modal.style.display = "flex";
@@ -454,6 +454,19 @@ function openAlarmModal(alarmId = null) {
 
 function closeAlarmModal() {
   document.getElementById("alarmModal").style.display = "none";
+}
+
+function openTimePicker() {
+  const timeInput = document.getElementById("alarmTime");
+  if (!timeInput) return;
+  timeInput.focus();
+  if (typeof timeInput.showPicker === "function") {
+    try {
+      timeInput.showPicker();
+    } catch (err) {
+      // Fallback when browser restricts programmatic showPicker
+    }
+  }
 }
 
 function resetLeadSelection() {
